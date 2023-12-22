@@ -1,4 +1,5 @@
 const recordButton = document.getElementById("recordButton");
+const globalPanelCheckbox = document.getElementById("globalPanelCheckbox");
 
 chrome.storage.sync.get("recording", (result) => {
     if (result.recording) {
@@ -8,6 +9,28 @@ chrome.storage.sync.get("recording", (result) => {
     recordButton.value = "Record";
     return undefined;
 });
+
+function connectToBackground() {
+    const backgroundPort = chrome.runtime.connect({ name: "sidepanel" });
+
+    backgroundPort.postMessage({
+        type: "init",
+        message: "init from panel open",
+    });
+
+    backgroundPort.onMessage.addListener(async (message) => {
+        if (message.type === "handle-init") {
+            console.log("connected to background");
+        }
+
+        if (message.type === "tab-updated") {
+            backgroundPort.postMessage({
+                type: "init",
+                message: "init from tab connected",
+            });
+        }
+    });
+}
 
 recordButton.addEventListener("click", () => {
     if (recordButton.value === "Record") {
@@ -30,6 +53,10 @@ recordButton.addEventListener("click", () => {
     }
 });
 
+globalPanelCheckbox.addEventListener("change", () => {
+    chrome.storage.sync.set({ globalPanel: globalPanelCheckbox.checked });
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "recordingStarted") {
         chrome.storage.sync.set({ recording: true });
@@ -43,29 +70,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return undefined;
     }
 });
-
-function connectToBackground() {
-    const backgroundPort = chrome.runtime.connect({ name: "sidepanel" });
-
-    backgroundPort.postMessage({
-        type: "init",
-        message: "init from panel open",
-    });
-
-    backgroundPort.onMessage.addListener(async (message) => {
-        if (message.type === "handle-init") {
-            let tab = await getCurrentTab();
-            chrome.storage.sync.set({ panelOpen: true, tabId: tab.id });
-        }
-
-        if (message.type === "tab-updated") {
-            backgroundPort.postMessage({
-                type: "init",
-                message: "init from tab connected",
-            });
-        }
-    });
-}
 
 async function getCurrentTab() {
     let queryOptions = { active: true, lastFocusedWindow: true };

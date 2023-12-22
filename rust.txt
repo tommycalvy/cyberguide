@@ -1,0 +1,116 @@
+use futures::{
+    channel::mpsc::{channel, Receiver},
+    SinkExt, StreamExt,
+};
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::{Path, PathBuf};
+use walkdir::{DirEntry, WalkDir};
+use std::fs;
+
+/// Async, futures channel based event watching
+fn main() {
+    
+    let src_path = Path::new("./src");
+    let build_path = Path::new("./build");
+    create_build_dir(src_path, build_path);
+    println!("watching {}", src_path.display());
+
+    futures::executor::block_on(async {
+        if let Err(e) = async_watch(src_path).await {
+            println!("error: {:?}", e)
+        }
+    });
+}
+
+fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
+    let (mut tx, rx) = channel(1);
+
+    // Automatically select the best implementation for your platform.
+    // You can also access each implementation directly e.g. INotifyWatcher.
+    let watcher = RecommendedWatcher::new(
+        move |res| {
+            futures::executor::block_on(async {
+                tx.send(res).await.unwrap();
+            })
+        },
+        Config::default(),
+    )?;
+
+    Ok((watcher, rx))
+}
+
+async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+    let (mut watcher, mut rx) = async_watcher()?;
+    let src_path_name = String::from("src");
+    let build_path = Path::new("./build");
+
+    // Add a path to be watched. All files and directories at that path and
+    // below will be monitored for changes.
+    watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
+
+    while let Some(res) = rx.next().await {
+        match res {
+            Ok(event) => {
+                println!("changed: {:?}", event);
+                update_file_in_build_dir(&src_path_name, build_path, event.paths[0].as_path());
+            },
+            Err(e) => println!("watch error: {:?}", e),
+        }
+    }
+
+    Ok(())
+}
+
+fn strip_path_until(path: &Path, strip_until: &str) -> PathBuf {
+    let mut result = PathBuf::new();
+    let mut start_appending = false;
+
+    for component in path.components() {
+        if start_appending {
+            result.push(component);
+        } else if component.as_os_str() == strip_until {
+            start_appending = true;
+        }
+    }
+    result
+}
+
+fn update_file_in_build_dir(src_path_name: &String, build_path: &Path, file_path: &Path) {
+    let stripped_file_path = strip_path_until(file_path, src_path_name);
+    let new_path = build_path.join(stripped_file_path);
+    fs::copy(file_path, new_path).expect("Couldn't copy file to build directory");
+    println!("Changed: {:?}", file_path);
+}
+
+fn create_build_dir(src_path: &Path, build_path: &Path) {
+    if !build_path.exists() {
+        fs::create_dir_all(build_path).expect("Couldn't create build directory");
+    }
+    let walker = WalkDir::new(src_path).into_iter();
+    for entry in walker.filter_entry(|e| !is_hidden(e)) {
+        let entry = entry.expect("Couldn't get entry from src dir");
+        let entry_path = entry.path();
+        let stripped_path = entry_path.strip_prefix(src_path).expect("Couldn't strip prefix");
+        let new_path = build_path.join(stripped_path);
+        dbg!(&new_path);
+        if entry.file_type().is_dir() {
+            if !new_path.exists() {
+                fs::create_dir(new_path).expect("Couldn't create directory in build directory");
+            }
+            continue;
+        }
+        let filename = entry.file_name().to_str().expect("Couldn't convert filename to string");
+        if filename == "main.rs" || filename == "env.d.ts" {
+            continue;
+        }
+        fs::copy(entry_path, new_path).expect("Couldn't copy file to build directory");
+    }
+}
+
+fn is_hidden(entry: &DirEntry) -> bool {
+    entry.file_name()
+         .to_str()
+         .map(|s| s.starts_with("."))
+         .unwrap_or(false)
+}
+

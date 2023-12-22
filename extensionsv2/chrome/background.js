@@ -2,6 +2,12 @@ chrome.sidePanel
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error(error));
 
+chrome.storage.sync.set({ guideActive: false });
+chrome.storage.sync.set({ recording: false });
+chrome.storage.sync.set({ globalPanel: false });
+
+chrome.storage.sync.set({ panelsOpen: [] });
+
 /*
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     let tab = await getCurrentTab();
@@ -37,6 +43,9 @@ chrome.runtime.onConnect.addListener((port) => {
             if (msg.type === "init") {
                 console.log("panel opened");
 
+                let panelsOpen = await chrome.storage.sync.get("panelsOpen");
+                let tab = await getCurrentTab();
+                panelsOpen.push(tab.id);
                 await chrome.storage.sync.set({ panelOpen: true });
 
                 port.onDisconnect.addListener(async () => {
