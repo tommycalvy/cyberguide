@@ -5,12 +5,7 @@ const countDown = document.createElement("h1");
 countDown.innerText = "3";
 countDown.style.color = "red";
 
-let readyToRecord = false;
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "readyToRecord") {
-        readyToRecord = true;
-        return undefined;
-    }
     if (request.action === "recordingStarted") {
         window.close();
     }

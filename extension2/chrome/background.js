@@ -8,6 +8,7 @@ chrome.storage.sync.set({ globalPanel: false });
 
 chrome.storage.sync.set({ panelsOpen: [] });
 
+
 /*
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     let tab = await getCurrentTab();
