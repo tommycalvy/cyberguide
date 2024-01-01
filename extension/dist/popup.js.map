@@ -1,0 +1,1 @@
+{"version":3,"file":"popup.js","sources":["./src/popup/popup.js"],"sourcesContent":["console.log(\"popup.js loaded\");\n"],"names":["console","log"],"mappings":"sCAAAA,QAAQC,GAAG,CAAC,kB"}
