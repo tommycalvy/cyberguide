@@ -28,6 +28,20 @@ const config = {
     module: {
         rules: [
             {
+                test: /\.png$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/[name][ext]',
+                },
+            },
+            {
+                test: 'manifest.json',
+                type: 'json',
+                generator: {
+                    filename: 'manifest.json',
+                },
+            },
+            {
                 test: /\.css$/,
                 use: [
                     {
