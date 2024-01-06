@@ -19,8 +19,12 @@
   "devDependencies": {
     "@rspack/cli": "^0.4.5",
     "@rspack/core": "^0.4.5",
+    "autoprefixer": "^10.4.16",
     "glob": "^10.3.10",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "postcss": "^8.4.33",
+    "postcss-loader": "^7.3.4",
+    "tailwindcss": "^3.4.0"
   },
   "dependencies": {
     "webextension-polyfill": "^0.10.0"
