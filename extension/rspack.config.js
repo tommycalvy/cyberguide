@@ -24,23 +24,20 @@ const config = {
                 filename: v.split('src/')[1],
                 inject: false,
         });
-    }),
+    }).concat([ new rspack.CopyRspackPlugin({
+        patterns: [
+            {
+                from: path.resolve(__dirname, 'src/manifest.json'),
+                to: path.resolve(__dirname, 'dist/manifest.json'),
+            },
+            {
+                from: path.resolve(__dirname, 'src/assets'),
+                to: path.resolve(__dirname, 'dist/assets'),
+            },
+        ],
+    })]),
     module: {
         rules: [
-            {
-                test: /\.png$/,
-                type: 'asset/resource',
-                generator: {
-                    filename: 'assets/[name][ext]',
-                },
-            },
-            {
-                test: 'manifest.json',
-                type: 'json',
-                generator: {
-                    filename: 'manifest.json',
-                },
-            },
             {
                 test: /\.css$/,
                 use: [
@@ -67,11 +64,3 @@ const config = {
     },
 };
 module.exports = config;
-/*
-[
-    new rspack.HtmlRspackPlugin({
-        template: "./src/popup/popup.html",
-        filename: "popup/popup.html",
-    })
-]
-* */
