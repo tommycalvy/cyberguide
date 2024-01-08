@@ -3,8 +3,12 @@
   "version": "0.0.1",
   "description": "Your Cyberspace Tourguide!",
   "scripts": {
-    "dev": "rspack dev",
-    "build": "rspack build"
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:rspack": "rspack dev",
+    "dev:css": "tailwindcss -o dist/tailwind.css --watch",
+    "build": "npm-run-all build:css build:rspack",
+    "build:rspack": "rspack build",
+    "build:css": "tailwindcss -o dist/tailwind.css --minify"
   },
   "repository": {
     "type": "git",
@@ -21,6 +25,7 @@
     "@rspack/core": "^0.4.5",
     "autoprefixer": "^10.4.16",
     "glob": "^10.3.10",
+    "npm-run-all": "^4.1.5",
     "path": "^0.12.7",
     "postcss": "^8.4.33",
     "postcss-loader": "^7.3.4",
