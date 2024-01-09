@@ -8,7 +8,6 @@ const isProduction = process.env.NODE_ENV === 'production';
 const config = {
     context: __dirname,
     mode: isProduction ? 'production' : 'development',
-    devtool: false,
     entry: Object.fromEntries(
         glob.sync(path.resolve(__dirname, 'src/**/*.js')).map((v) => [
             v.split('src/')[1], v,
@@ -35,7 +34,7 @@ const config = {
                 to: path.resolve(__dirname, 'dist/assets'),
             },
         ],
-    })]),
+    })]).concat([ new rspack.HotModuleReplacementPlugin()]),
     module: {
         rules: [
             {

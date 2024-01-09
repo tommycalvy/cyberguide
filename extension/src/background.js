@@ -22,4 +22,4 @@ browser.runtime.onConnect.addListener((port) => {
 
 console.log("background.js loaded ");
 
-
+console.log("Heeeyyyy");
