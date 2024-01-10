@@ -8,6 +8,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const config = {
     context: __dirname,
     mode: isProduction ? 'production' : 'development',
+    watch: true,
     entry: Object.fromEntries(
         glob.sync(path.resolve(__dirname, 'src/**/*.js')).map((v) => [
             v.split('src/')[1], v,
@@ -16,6 +17,8 @@ const config = {
     output: {
         filename: "[name]",
         path: path.resolve(__dirname, "dist"),
+//        publicPath: "http://localhost:8080/",
+//        crossOriginLoading: "anonymous",
     },
     plugins: glob.sync(path.resolve(__dirname, 'src/**/*.html')).map((v) => {
         return new rspack.HtmlRspackPlugin({
@@ -60,6 +63,12 @@ const config = {
         rspackFuture: {
             disableApplyEntryLazily: true,
         },
+    },
+    devServer: {
+        static: {
+            directory: path.join(__dirname, 'dist'),
+        },
+ //       liveReload: false,
     },
 };
 module.exports = config;

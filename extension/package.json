@@ -4,7 +4,7 @@
   "description": "Your Cyberspace Tourguide!",
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
-    "dev:rspack": "rspack dev",
+    "dev:rspack": "rspack build",
     "dev:css": "tailwindcss -o dist/tailwind.css --watch",
     "build": "npm-run-all build:css build:rspack",
     "build:rspack": "rspack build",

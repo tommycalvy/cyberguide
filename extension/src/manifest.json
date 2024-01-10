@@ -13,7 +13,7 @@
         "default_title": "Open CyberGuide Panel",
          "default_popup": "popup/popup.html"
     },
-    "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+    "permissions": ["activeTab", "scripting", "tabs", "storage"],
     "host_permissions": [
         "*://*/*"
     ],
