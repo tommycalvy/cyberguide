@@ -18,23 +18,24 @@ browser.runtime.onConnect.addListener((port) => {
                 });
             } else if (msg.type === "panel") {
                 console.log("panel message received");
-                executeScript(msg.tabId, panel);
+                executeScript(msg.tabId, ["./content/panel.js"]);
             }
         }
     });
 });
 
-// Execute script in specified tab
-async function executeScript(tabId, func) {
+/**
+    * Execute script in specified tab
+    * @param {number} tabId - Id of tab to execute script in
+    * @param {string[]} files - Function to execute
+    * @returns {Promise} - Promise that resolves when script is executed
+*/
+async function executeScript(tabId, files) {
     return browser.scripting.executeScript({
         target: { tabId: tabId },
         injectImmediately: true,
-        func: func
+        files: files
     });
-}
-
-function panel() {
-    console.log("panel opened");
 }
 
 async function getCurrentTab() {

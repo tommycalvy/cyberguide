@@ -37,7 +37,7 @@ const config = {
                 to: path.resolve(__dirname, 'dist/assets'),
             },
         ],
-    })]).concat([ new rspack.HotModuleReplacementPlugin()]),
+    })]),
     module: {
         rules: [
             {
