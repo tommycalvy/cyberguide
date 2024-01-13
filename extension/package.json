@@ -5,10 +5,10 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
     "dev:rspack": "rspack build",
-    "dev:css": "tailwindcss -o dist/tailwind.css --watch",
+    "dev:css": "tailwindcss -o dist/main.css --watch",
     "build": "npm-run-all build:css build:rspack",
     "build:rspack": "rspack build",
-    "build:css": "tailwindcss -o dist/tailwind.css --minify"
+    "build:css": "tailwindcss -o dist/main.css --minify"
   },
   "repository": {
     "type": "git",

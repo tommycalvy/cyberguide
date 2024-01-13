@@ -18,7 +18,7 @@ browser.runtime.onConnect.addListener((port) => {
                 });
             } else if (msg.type === "panel") {
                 console.log("panel message received");
-                executeScript(msg.tabId, ["./content/panel.js"]);
+                executeScript(msg.tabId, ["scripts/panel.js"]);
             }
         }
     });
@@ -34,6 +34,19 @@ async function executeScript(tabId, files) {
     return browser.scripting.executeScript({
         target: { tabId: tabId },
         injectImmediately: true,
+        files: files
+    });
+}
+
+/**
+    * Insert CSS in specified tab
+    * @param {number} tabId - Id of tab to insert CSS in
+    * @param {string[]} files - CSS files to insert
+    * @returns {Promise} - Promise that resolves when CSS is inserted
+*/
+async function insertCSS(tabId, files) {
+    return browser.scripting.insertCSS({
+        target: { tabId: tabId },
         files: files
     });
 }
