@@ -11,17 +11,17 @@ bport.onMessage.addListener((msg) => {
     }
 });
 
-const panelToggle = document.getElementById("panel-toggle");
-if (panelToggle === null) {
-    console.error("panelToggle is null");
-} else {
-    panelToggle.addEventListener("click", async () => {
+const widgetToggle = document.getElementById("widget-toggle");
+if (widgetToggle instanceof HTMLButtonElement) {
+    widgetToggle.addEventListener("click", async () => {
         let tab = await getCurrentTab();
         bport.postMessage({
-            type: "panel",
+            type: "show-widget",
             tabId: tab.id
         });
     });
+} else {
+    console.error("panelToggle is null");
 }
 async function getCurrentTab() {
     let queryOptions = { active: true, lastFocusedWindow: true };

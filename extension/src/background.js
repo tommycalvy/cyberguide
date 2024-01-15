@@ -16,9 +16,9 @@ browser.runtime.onConnect.addListener((port) => {
                     type: "handle-init",
                     message: "popup open"
                 });
-            } else if (msg.type === "panel") {
-                console.log("panel message received");
-                executeScript(msg.tabId, ["scripts/panel.js"]);
+            } else if (msg.type === "show-widget") {
+                console.log("show widget message received");
+                executeScript(msg.tabId, ["scripts/widget.js"]);
             }
         }
     });
