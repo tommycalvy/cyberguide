@@ -2,7 +2,7 @@ var browser = require("webextension-polyfill");
 
 console.log("background.js loaded ");
 
-//browser.storage.sync.set({ guideActive: false });
+browser.storage.sync.set({ "recording-active": false });
 
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener((msg) =>  {
@@ -19,6 +19,25 @@ browser.runtime.onConnect.addListener((port) => {
             } else if (msg.type === "show-widget") {
                 console.log("show widget message received");
                 executeScript(msg.tabId, ["scripts/widget.js"]);
+            }
+        } else if (port.name === "widget") {
+            if (msg.type === "init") {
+                console.log("port connected: ", port.name);
+                port.onDisconnect.addListener(async () => {
+                    console.log("port disconnected: ", port.name);
+                });
+                port.postMessage({
+                    type: "handle-init",
+                    message: "widget open"
+                });
+            } else if (msg.type === "start-recording") {
+                console.log("start recording message received");
+                browser.storage.sync.set({ "recording-active": true });
+                executeScript(msg.tabId, ["scripts/recording.js"]);
+           } else if (msg.type === "stop-recording") {
+                console.log("stop recording message received");
+                browser.storage.sync.set({ "recording-active": false });
+                executeScript(msg.tabId, ["scripts/recording.js"]);
             }
         }
     });
