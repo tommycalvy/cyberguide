@@ -2,10 +2,10 @@ import browser from "webextension-polyfill";
 
 console.log("background.js loaded ");
 
-browser.storage.local.set({ "recording-active": false });
-browser.storage.local.set({ "r-tab-ids": [] });
-browser.storage.local.set({ "widget-open": false });
-browser.storage.local.set({ "w-tab-ids": [] });
+browser.storage.local.set({ "recordingActive": false });
+browser.storage.local.set({ "rTabIds": [] });
+browser.storage.local.set({ "widgetOpen": false });
+browser.storage.local.set({ "wTabIds": [] });
 
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (msg) =>  {
@@ -29,13 +29,13 @@ browser.runtime.onConnect.addListener((port) => {
                 port.onDisconnect.addListener(async () => {
                     console.log("port disconnected: ", port.name);
                 });
-                let wTabIds = await browser.storage.local.get('w-tab-ids');
+                let { wTabIds } = await browser.storage.local.get('wTabIds');
                 const tab = await getCurrentTab();
                 if (tab.id == null) {
                     throw new Error("tab.id is null");
                 }
                 wTabIds.push(tab.id);
-                browser.storage.local.set({ "w-tab-ids": wTabIds });
+                browser.storage.local.set({ "wTabIds": wTabIds });
                 port.postMessage({
                     type: "handle-init",
                     message: "widget open"
@@ -46,14 +46,14 @@ browser.runtime.onConnect.addListener((port) => {
                 if (tab.id == null) {
                     throw new Error("tab.id is null");
                 }
-                let rTabIds = await browser.storage.local.get('r-tab-ids');
+                let { rTabIds } = await browser.storage.local.get("rTabIds");
                 rTabIds.push(tab.id); 
                 console.log("rTabIds: ", rTabIds);
-                browser.storage.local.set({ 'r-tab-ids': rTabIds });
+                browser.storage.local.set({ "rTabIds": rTabIds });
                 executeScript(tab.id, ["scripts/recording.js"]);
            } else if (msg.type === "stop-recording") {
                 console.log("stop recording message received");
-                browser.storage.local.set({ "recording-active": false });
+                browser.storage.local.set({ "recordingActive": false });
                 executeScript(msg.tabId, ["scripts/recording.js"]);
             }
         }
@@ -62,8 +62,8 @@ browser.runtime.onConnect.addListener((port) => {
 
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     if (changeInfo.status === "complete") {
-        const rTabIds = await browser.storage.local.get('r-tab-ids');
-        const wTabIds = await browser.storage.local.get('w-tab-ids');
+        const { rTabIds } = await browser.storage.local.get("rTabIds");
+        const { wTabIds } = await browser.storage.local.get("wTabIds");
         if (rTabIds.includes(tabId)) {
             executeScript(tabId, ["scripts/recording.js"]);
         }

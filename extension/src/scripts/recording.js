@@ -1,6 +1,6 @@
 import browser from 'webextension-polyfill';
 
-const recordingActive = browser.storage.local.get('recording-active');
+const { recordingActive } = await browser.storage.local.get('recordingActive');
 
 if (!recordingActive) {
 
@@ -50,7 +50,7 @@ if (!recordingActive) {
         }, 1000);
     }, 1000);
 
-    browser.storage.local.set({ "recording-active": true });
+    browser.storage.local.set({ "recordingActive": true });
 }
 
 document.addEventListener('pointerdown', (e) => {
@@ -68,3 +68,62 @@ document.addEventListener('pointerdown', (e) => {
         e.target.removeEventListener('pointerup', logElement);
     });
 });
+
+document.addEventListener('resize', (e) => {
+    console.log('resize event');
+    debounce(logVisibility(e), 250);
+});
+
+function logVisibility(e) {
+    let [isVisible, inViewport] = checkVisibility(e.target);
+    console.log('isVisible: ', isVisible);
+    console.log('inViewport: ', inViewport);
+}
+
+function checkVisibility(elt) {
+    let isVisible = true;
+    let inViewport = true;
+
+    const rect = elt.getBoundingClientRect();
+    const style = window.getComputedStyle(elt);
+    const display = style.getPropertyValue('display');
+    const visibility = style.getPropertyValue('visibility');
+    const opacity = style.getPropertyValue('opacity');
+    if (
+        display === 'none' || 
+        visibility === 'hidden' ||
+        opacity === '0' ||
+        rect.width <= 0 ||
+        rect.height <= 0
+    ) {
+        isVisible = false;
+    }
+    if (
+        rect.top >= (
+            window.innerHeight || document.documentElement.clientHeight
+        ) ||
+        rect.bottom <= 0 ||
+        rect.left > (
+            window.innerWidth || document.documentElement.clientWidth
+        ) ||
+        rect.right <= 0
+    ) {
+        inViewport = false;
+    }
+    return [isVisible, inViewport];
+}
+
+// Debounce function
+function debounce(func, wait) {
+    let timeout;
+
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}

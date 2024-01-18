@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 
-browser.storage.local.set({ "widget-open": true });
-const recordingActive = await browser.storage.local.get("recording-active");
+browser.storage.local.set({ "widgetOpen": true });
+const { recordingActive } = await browser.storage.local.get("recordingActive");
 
 const bport = browser.runtime.connect({ name: "widget" });
 bport.postMessage({ type: "init" });
@@ -59,7 +59,7 @@ if (widgetClose == null) {
 
 widgetClose.addEventListener("click", () => {
     shadowHost.remove();
-    browser.storage.local.set({ "widget-open": false });
+    browser.storage.local.set({ "widgetOpen": false });
 });
 
 dragElement(widget);
