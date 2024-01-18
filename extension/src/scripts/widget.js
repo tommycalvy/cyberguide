@@ -1,5 +1,8 @@
 import browser from "webextension-polyfill";
 
+browser.storage.local.set({ "widget-open": true });
+const recordingActive = await browser.storage.local.get("recording-active");
+
 const bport = browser.runtime.connect({ name: "widget" });
 bport.postMessage({ type: "init" });
 
@@ -8,6 +11,11 @@ bport.onMessage.addListener((msg) => {
         console.log("background.js: ", msg.message);
     }
 });
+
+let wRecordButtonText = "Record";
+if (recordingActive) {
+    wRecordButtonText = "Stop";
+}
 
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
@@ -21,9 +29,9 @@ shadowRoot.innerHTML = `
                 hover:bg-gray-100 font-bold cursor-grab select-none">
                 M
             </button>
-            <button id="widget-record" class="w-full h-8 bg-red-500 text-black
+            <button id="widget-record" class="w-14 h-8 bg-red-500 text-black
                 hover:bg-red-700 font-bold">
-                Record
+                ${wRecordButtonText}
             </button>
             <button id="widget-close" class="border-black select-none
                 bg-white hover:bg-gray-100 text-black font-bold
@@ -41,20 +49,21 @@ document.body.appendChild(shadowHost);
 
 const widget = shadowRoot.getElementById("widget");
 const widgetClose = shadowRoot.getElementById("widget-close");
-if (widgetClose instanceof HTMLButtonElement) {
-    widgetClose.addEventListener("click", () => {
-        if (shadowHost instanceof HTMLDivElement) {
-            shadowHost.remove();
-        } else {
-            console.error("panel is not an HTMLDivElement");
-        }
-    });
-} else {
-    console.error("panelClose is not an HTMLButtonElement");
+
+if (widget == null) {
+    throw new Error("widget is null");
 }
-if (widget instanceof HTMLDivElement) {
-    dragElement(widget);
+if (widgetClose == null) {
+    throw new Error("widgetClose is null");
 }
+
+widgetClose.addEventListener("click", () => {
+    shadowHost.remove();
+    browser.storage.local.set({ "widget-open": false });
+});
+
+dragElement(widget);
+
 console.log("panel opened");
 
 /**
@@ -122,19 +131,20 @@ function dragElement(elt) {
 }
 
 const widgetRecord = shadowRoot.getElementById("widget-record");
-if (widgetRecord instanceof HTMLButtonElement) {
-    widgetRecord.addEventListener("click", async () => {
-        let tab = await getCurrentTab();
-        bport.postMessage({
-            type: "start-recording",
-            tabId: tab.id
-        });
-    });
+if (widgetRecord instanceof HTMLButtonElement === false) {
+    throw new Error("widgetRecord is null");
 }
 
-async function getCurrentTab() {
-    let queryOptions = { active: true, lastFocusedWindow: true };
-    // `tab` will either be a `tabs.Tab` instance or `undefined`.
-    let [tab] = await browser.tabs.query(queryOptions);
-    return tab;
-}
+widgetRecord.addEventListener("click", async () => {
+    if (recordingActive) {
+        bport.postMessage({
+            type: "stop-recording",
+        });
+        widgetRecord.innerHTML = "Record";
+        return;
+    }
+    bport.postMessage({
+        type: "start-recording",
+    });
+    widgetRecord.innerHTML = "Stop";
+});

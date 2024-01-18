@@ -1,4 +1,4 @@
-var browser = require("webextension-polyfill");
+import browser from "webextension-polyfill";
 console.log("popup.js loaded");
 
 // Establish connection with background.js
@@ -27,6 +27,5 @@ async function getCurrentTab() {
     let queryOptions = { active: true, lastFocusedWindow: true };
     // `tab` will either be a `tabs.Tab` instance or `undefined`.
     let [tab] = await browser.tabs.query(queryOptions);
-    console.log("tab: ", tab);
     return tab;
 }

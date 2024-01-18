@@ -1,11 +1,14 @@
-var browser = require("webextension-polyfill");
+import browser from "webextension-polyfill";
 
 console.log("background.js loaded ");
 
-browser.storage.sync.set({ "recording-active": false });
+browser.storage.local.set({ "recording-active": false });
+browser.storage.local.set({ "r-tab-ids": [] });
+browser.storage.local.set({ "widget-open": false });
+browser.storage.local.set({ "w-tab-ids": [] });
 
 browser.runtime.onConnect.addListener((port) => {
-    port.onMessage.addListener((msg) =>  {
+    port.onMessage.addListener(async (msg) =>  {
         if (port.name === "popup") {
             if (msg.type === "init") {
                 console.log("port connected: ", port.name);
@@ -26,21 +29,48 @@ browser.runtime.onConnect.addListener((port) => {
                 port.onDisconnect.addListener(async () => {
                     console.log("port disconnected: ", port.name);
                 });
+                let wTabIds = await browser.storage.local.get('w-tab-ids');
+                const tab = await getCurrentTab();
+                if (tab.id == null) {
+                    throw new Error("tab.id is null");
+                }
+                wTabIds.push(tab.id);
+                browser.storage.local.set({ "w-tab-ids": wTabIds });
                 port.postMessage({
                     type: "handle-init",
                     message: "widget open"
                 });
             } else if (msg.type === "start-recording") {
                 console.log("start recording message received");
-                browser.storage.sync.set({ "recording-active": true });
-                executeScript(msg.tabId, ["scripts/recording.js"]);
+                const tab = await getCurrentTab();
+                if (tab.id == null) {
+                    throw new Error("tab.id is null");
+                }
+                let rTabIds = await browser.storage.local.get('r-tab-ids');
+                rTabIds.push(tab.id); 
+                console.log("rTabIds: ", rTabIds);
+                browser.storage.local.set({ 'r-tab-ids': rTabIds });
+                executeScript(tab.id, ["scripts/recording.js"]);
            } else if (msg.type === "stop-recording") {
                 console.log("stop recording message received");
-                browser.storage.sync.set({ "recording-active": false });
+                browser.storage.local.set({ "recording-active": false });
                 executeScript(msg.tabId, ["scripts/recording.js"]);
             }
         }
     });
+});
+
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+    if (changeInfo.status === "complete") {
+        const rTabIds = await browser.storage.local.get('r-tab-ids');
+        const wTabIds = await browser.storage.local.get('w-tab-ids');
+        if (rTabIds.includes(tabId)) {
+            executeScript(tabId, ["scripts/recording.js"]);
+        }
+        if (wTabIds.includes(tabId)) {
+            executeScript(tabId, ["scripts/widget.js"]);
+        }
+    }
 });
 
 /**
