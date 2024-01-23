@@ -11,11 +11,7 @@ bport.onMessage.addListener((msg) => {
         console.log("background.js: ", msg.message);
     }
 });
-
-let wRecordButtonText = "Record";
-if (recordingActive) {
-    wRecordButtonText = "Stop";
-}
+const wRecordButtonText = recordingActive ? "Stop" : "Record";
 
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });

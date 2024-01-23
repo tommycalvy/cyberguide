@@ -2,61 +2,107 @@ import browser from "webextension-polyfill";
 
 console.log("background.js loaded ");
 
-browser.storage.local.set({ "recordingActive": false });
+browser.storage.local.set({ "rActive": false });
+browser.storage.local.set({ "recordedElts": [] });
 browser.storage.local.set({ "rTabIds": [] });
 browser.storage.local.set({ "widgetOpen": false });
 browser.storage.local.set({ "wTabIds": [] });
 
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (msg) =>  {
-        if (port.name === "popup") {
+        try {
+            console.log(port.name, ": ", msg.type);
             if (msg.type === "init") {
-                console.log("port connected: ", port.name);
-                port.onDisconnect.addListener(async () => {
-                    console.log("port disconnected: ", port.name);
-                });
                 port.postMessage({
                     type: "handle-init",
-                    message: "popup open"
+                    message: `${port.name} connected`
                 });
-            } else if (msg.type === "show-widget") {
-                console.log("show widget message received");
-                executeScript(msg.tabId, ["scripts/widget.js"]);
             }
-        } else if (port.name === "widget") {
-            if (msg.type === "init") {
-                console.log("port connected: ", port.name);
-                port.onDisconnect.addListener(async () => {
-                    console.log("port disconnected: ", port.name);
-                });
-                let { wTabIds } = await browser.storage.local.get('wTabIds');
-                const tab = await getCurrentTab();
-                if (tab.id == null) {
-                    throw new Error("tab.id is null");
+
+            if (port.name === "popup") {
+                if (msg.type === "show-widget") {
+                    let wTabIdsPromise = browser.storage.local.get('wTabIds');
+                    let currentTabPromise = getCurrentTab();
+                    let [{ wTabIds }, currentTab] = await Promise.all(
+                        [wTabIdsPromise, currentTabPromise]
+                    );
+                    if (currentTab.id == null) {
+                        throw new Error("currentTab.id is null");
+                    } else if (wTabIds.includes(currentTab.id)) {
+                        throw new Error("widget already open");
+                    }
+                    executeScript(msg.tabId, ["scripts/widget.js"]);
                 }
-                wTabIds.push(tab.id);
-                browser.storage.local.set({ "wTabIds": wTabIds });
-                port.postMessage({
-                    type: "handle-init",
-                    message: "widget open"
-                });
-            } else if (msg.type === "start-recording") {
-                console.log("start recording message received");
-                const tab = await getCurrentTab();
-                if (tab.id == null) {
-                    throw new Error("tab.id is null");
+            } else if (port.name === "widget") {
+                if (msg.type === "init") {
+                    let wTabIdsPromise = browser.storage.local.get('wTabIds');
+                    let currentTabPromise = getCurrentTab();
+                    let [{ wTabIds }, currentTab] = await Promise.all(
+                        [wTabIdsPromise, currentTabPromise]
+                    );
+                    if (currentTab.id == null) {
+                        throw new Error("currentTab.id is null");
+                    }
+                    if (!wTabIds.includes(currentTab.id)) {
+                        wTabIds.push(currentTab.id);
+                        browser.storage.local.set({ "wTabIds": wTabIds });
+                    }    
+                } else if (msg.type === "start-recording") {
+                    let rTabIdsPromise = browser.storage.local.get('rTabIds');
+                    let currentTabPromise = getCurrentTab();
+                    let [{ rTabIds }, currentTab] = await Promise.all(
+                        [rTabIdsPromise, currentTabPromise]
+                    );
+                    if (currentTab.id == null) {
+                        throw new Error("currentTab.id is null");
+                    } else if (rTabIds.includes(currentTab.id)) {
+                        throw new Error("recording already active in tab");
+                    }
+                    executeScript(currentTab.id, ["scripts/recording.js"]);
+               } else if (msg.type === "stop-recording") {
+                    browser.storage.local.set({ "rActive": false });
+                    port.postMessage({ type: "stop-recording" });
                 }
-                let { rTabIds } = await browser.storage.local.get("rTabIds");
-                rTabIds.push(tab.id); 
-                console.log("rTabIds: ", rTabIds);
-                browser.storage.local.set({ "rTabIds": rTabIds });
-                executeScript(tab.id, ["scripts/recording.js"]);
-           } else if (msg.type === "stop-recording") {
-                console.log("stop recording message received");
-                browser.storage.local.set({ "recordingActive": false });
-                executeScript(msg.tabId, ["scripts/recording.js"]);
+            } else if (port.name === "recording") {
+                if (msg.type === "init") {
+                    let rTabIdsPromise = browser.storage.local.get('rTabIds');
+                    let currentTabPromise = getCurrentTab();
+                    let rActivePromise = browser.storage.local.get('rActive');
+                    let [{ rTabIds }, currentTab, rActive] = await Promise.all(
+                        [rTabIdsPromise, currentTabPromise, rActivePromise]
+                    );
+                    if (currentTab.id == null) {
+                        throw new Error("currentTab.id is null");
+                    }
+                    if (!rActive) {
+                        browser.storage.local.set({ "rActive": true });
+                    }
+                    if (!rTabIds.includes(currentTab.id)) {
+                        rTabIds.push(currentTab.id);
+                        browser.storage.local.set({ "rTabIds": rTabIds });
+                    }
+                } else if (msg.type === "stop-recording") {
+                    let rTabIdsPromise = browser.storage.local.get('rTabIds');
+                    let currentTabPromise = getCurrentTab();
+                    let [{ rTabIds }, currentTab] = await Promise.all(
+                        [rTabIdsPromise, currentTabPromise]
+                    );
+                    if (currentTab.id == null) {
+                        throw new Error("currentTab.id is null");
+                    }
+                    if (rTabIds.includes(currentTab.id)) {
+                        let index = rTabIds.indexOf(currentTab.id);
+                        rTabIds.splice(index, 1);
+                        browser.storage.local.set({ "rTabIds": rTabIds });
+                    }
+                }
             }
+        } catch (e) {
+            console.error(e);
         }
+    });
+    port.onDisconnect.addListener(() => {
+        console.log("port disconnected: ", port.name);
     });
 });
 

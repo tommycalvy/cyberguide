@@ -1,8 +1,8 @@
 import browser from 'webextension-polyfill';
 
-const { recordingActive } = await browser.storage.local.get('recordingActive');
+const { rActive } = await browser.storage.local.get('rActive');
 
-if (!recordingActive) {
+if (!rActive) {
 
     const shadowHost = document.createElement('div');
     const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
@@ -28,11 +28,11 @@ if (!recordingActive) {
     const countDown = shadowRoot.getElementById('count-down');
     const countDownNumber = shadowRoot.getElementById('count-down-number');
 
-    if (countDown == null) {
-        throw new Error('countDown is null');
+    if (countDown instanceof HTMLDivElement === false) {
+        throw new Error('countDown is not an HTMLDivElement');
     }
-    if (countDownNumber == null) {
-        throw new Error('countDownNumber is null');
+    if (countDownNumber instanceof HTMLDivElement === false) {
+        throw new Error('countDownNumber is not an HTMLDivElement');
     }
 
 
@@ -50,45 +50,94 @@ if (!recordingActive) {
         }, 1000);
     }, 1000);
 
-    browser.storage.local.set({ "recordingActive": true });
+    browser.storage.local.set({ "rActive": true });
 }
 
-document.addEventListener('pointerdown', (e) => {
-    if (e.target instanceof HTMLElement === false) {
-        console.log('not an HTMLElement');
+/**
+    * Record click event
+    * @param {PointerEvent} e - PointerEvent to record
+    * @memberof recordClick
+    * @inner
+*/
+function recordClick(e) {
+    if (e.target instanceof Element === false) {
+        console.log('not an Element');
         return;
     }
     e.target.addEventListener('pointerup', function logElement(e) {
-        if (e.target instanceof HTMLElement === false) {
-            console.log('not an HTMLElement');
+        if (e.target instanceof Element === false) {
+            console.log('not an Element');
             return;
-        } 
-        //TODO: save element to storage
+        }
         console.log(e.target);
+        let url = window.location.href;
+        console.log(url);
+        if (url === null) {
+            throw new Error('url is null');
+        }
+        let recordedElt = {
+            url: url,
+            elt: e.target
+        };
+        browser.storage.local.get('recordedElts').then((result) => {
+            let recordedElts = result.recordedElts;
+            recordedElts.push(recordedElt);
+            browser.storage.local.set({ "recordedElts": recordedElts });
+        });
         e.target.removeEventListener('pointerup', logElement);
     });
-});
-
-document.addEventListener('resize', (e) => {
-    console.log('resize event');
-    debounce(logVisibility(e), 250);
-});
-
-function logVisibility(e) {
-    let [isVisible, inViewport] = checkVisibility(e.target);
-    console.log('isVisible: ', isVisible);
-    console.log('inViewport: ', inViewport);
 }
 
+document.addEventListener('pointerdown', recordClick);
+
+const bport = browser.runtime.connect({ name: "recording" });
+bport.postMessage({
+    type: "init",
+    message: "recording script connected"
+});
+
+let tabId = null;
+
+bport.onMessage.addListener(async (msg) => {
+    if (msg.type === "handle-init") {
+        console.log("background.js: ", msg.message);
+        tabId = msg.tabId;
+    }
+    if (msg.type === "stop-recording") {
+        console.log("stop recording message received");
+        document.removeEventListener('pointerdown', recordClick);
+        bport.postMessage({
+            type: "handle-stop-recording",
+            tabId: tabId
+        });
+        bport.disconnect();
+    }
+});
+
+/**
+    * Check element visibility
+    * @param {HTMLElement} elt - Element to check visibility of
+    * @returns {boolean[]} - Array of booleans indicating visibility
+    * @memberof checkVisibility
+    * @inner
+*/
 function checkVisibility(elt) {
-    let isVisible = true;
+    console.log('checkVisibility');
+    console.log('elt: ', elt);
+    if (elt instanceof Element === false) {
+        throw new Error('elt is not an Element');
+    }
+    let notHidden = true;
     let inViewport = true;
 
     const rect = elt.getBoundingClientRect();
     const style = window.getComputedStyle(elt);
     const display = style.getPropertyValue('display');
+    console.log('display: ', display);
     const visibility = style.getPropertyValue('visibility');
+    console.log('visibility: ', visibility);
     const opacity = style.getPropertyValue('opacity');
+    console.log('opacity: ', opacity);
     if (
         display === 'none' || 
         visibility === 'hidden' ||
@@ -96,7 +145,7 @@ function checkVisibility(elt) {
         rect.width <= 0 ||
         rect.height <= 0
     ) {
-        isVisible = false;
+        notHidden = false;
     }
     if (
         rect.top >= (
@@ -110,20 +159,6 @@ function checkVisibility(elt) {
     ) {
         inViewport = false;
     }
-    return [isVisible, inViewport];
+    return [notHidden, inViewport];
 }
 
-// Debounce function
-function debounce(func, wait) {
-    let timeout;
-
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
