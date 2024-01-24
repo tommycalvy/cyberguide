@@ -107,7 +107,7 @@ bport.onMessage.addListener(async (msg) => {
         console.log("stop recording message received");
         document.removeEventListener('pointerdown', recordClick);
         bport.postMessage({
-            type: "handle-stop-recording",
+            type: "recording-script-shutdown",
             tabId: tabId
         });
         bport.disconnect();

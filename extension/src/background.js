@@ -1,4 +1,5 @@
 import browser from "webextension-polyfill";
+import Queue from "./utils/queue.js";
 
 console.log("background.js loaded ");
 
@@ -7,6 +8,8 @@ browser.storage.local.set({ "recordedElts": [] });
 browser.storage.local.set({ "rTabIds": [] });
 browser.storage.local.set({ "widgetOpen": false });
 browser.storage.local.set({ "wTabIds": [] });
+
+let rTabIdsQueue = new Queue();
 
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (msg) =>  {
@@ -48,7 +51,9 @@ browser.runtime.onConnect.addListener((port) => {
                         browser.storage.local.set({ "wTabIds": wTabIds });
                     }    
                 } else if (msg.type === "start-recording") {
-                    let rTabIdsPromise = browser.storage.local.get('rTabIds');
+                    let promise = new Promise((resolve) => {
+                        let rTabIdsPromise = browser.storage.local.get('rTabIds');
+                    });
                     let currentTabPromise = getCurrentTab();
                     let [{ rTabIds }, currentTab] = await Promise.all(
                         [rTabIdsPromise, currentTabPromise]
@@ -92,6 +97,17 @@ browser.runtime.onConnect.addListener((port) => {
                     }
                     if (rTabIds.includes(currentTab.id)) {
                         let index = rTabIds.indexOf(currentTab.id);
+                        rTabIds.splice(index, 1);
+                        browser.storage.local.set({ "rTabIds": rTabIds });
+                    }
+                } else if (msg.type === "recording-script-shutdown") {
+                    if (msg.tabId == null) {
+                        throw new Error("msg.tabId is null");
+                    }
+                    let { rTabIds } = await browser.storage.local.get('rTabIds');
+
+                    if (rTabIds.includes(msg.tabId)) {
+                        let index = rTabIds.indexOf(msg.tabId);
                         rTabIds.splice(index, 1);
                         browser.storage.local.set({ "rTabIds": rTabIds });
                     }
