@@ -1,7 +1,11 @@
 class Queue {
+
+    #array;
+    #workingOnPromise;
+
     constructor() {
-        this.queue = [];
-        this.workingOnPromise = false;
+        this.#array = [];
+        this.#workingOnPromise = false;
     }
 
     /**
@@ -12,40 +16,40 @@ class Queue {
     */
     enqueue(promise) {
         return new Promise((resolve, reject) => {
-            this.queue.push({
+            this.#array.push({
                 promise,
                 resolve,
                 reject,
             });
-            this.dequeue();
+            this.#dequeue();
         });
     }
 
-    dequeue() {
-        if (this.workingOnPromise) {
+    #dequeue() {
+        if (this.#workingOnPromise) {
             return false;
         }
-        const item = this.queue.shift();
+        const item = this.#array.shift();
         if (!item) {
             return false;
         }
         try {
-            this.workingOnPromise = true;
+            this.#workingOnPromise = true;
             item.promise()
                 .then((value) => {
-                    this.workingOnPromise = false;
+                    this.#workingOnPromise = false;
                     item.resolve(value);
-                    this.dequeue();
+                    this.#dequeue();
                 })
                 .catch(err => {
-                    this.workingOnPromise = false;
+                    this.#workingOnPromise = false;
                     item.reject(err);
-                    this.dequeue();
+                    this.#dequeue();
                 })
         } catch (err) {
-            this.workingOnPromise = false;
+            this.#workingOnPromise = false;
             item.reject(err);
-            this.dequeue();
+            this.#dequeue();
         }
         return true;
     }
