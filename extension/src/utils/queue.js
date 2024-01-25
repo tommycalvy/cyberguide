@@ -35,7 +35,7 @@ class Queue {
         }
         try {
             this.#workingOnPromise = true;
-            item.promise()
+            Promise.resolve(item.promise)
                 .then((value) => {
                     this.#workingOnPromise = false;
                     item.resolve(value);

@@ -9,20 +9,24 @@ browser.storage.local.set({ "rTabIds": [] });
 browser.storage.local.set({ "widgetOpen": false });
 browser.storage.local.set({ "wTabIds": [] });
 
-let testArray = new ArrayStorage("local", "testArray", []);
-testArray.push(1);
-testArray.push(2);
-testArray.push(3);
-testArray.push(4);
-testArray.push(5);
-testArray.pushUnique(5).catch((err) => console.error(err));
-testArray.pushUnique(6).catch((err) => console.error(err));
-testArray.pushUnique(7).catch((err) => console.error(err));
-testArray.pushUnique(8).catch((err) => console.error(err));
-testArray.removeItem(7).catch((err) => console.error(err));
-testArray.removeItem(10).catch((err) => console.error(err));
-testArray.print().catch((err) => console.error(err));
-
+try {
+    let testArray = new ArrayStorage("local", "testArray", []);
+    testArray.push(1);
+    testArray.push(2);
+    testArray.push(3);
+    testArray.push(4);
+    testArray.push(5);
+    testArray.pushUnique(5);
+    testArray.pushUnique(6);
+    testArray.pushUnique(7);
+    testArray.pushUnique(8);
+    testArray.print();
+    testArray.removeItem(7);
+    testArray.removeItem(10);
+    testArray.print();
+} catch (err) {
+    console.error(err);
+}
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (msg) =>  {
         try {

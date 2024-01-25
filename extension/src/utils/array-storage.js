@@ -27,9 +27,9 @@ class ArrayStorage extends BrowserStorageWrapper {
         * @param {Array} value
         * @returns {Promise<void>}
     */
-    set(value) {
-        return this.#queue.enqueue(super.set(value));
-    }
+//    set(value) {
+//        return this.#queue.enqueue(super.set(value));
+//    }
 
     remove() {
         return this.#queue.enqueue(super.remove());
