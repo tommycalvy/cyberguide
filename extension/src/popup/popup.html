@@ -3,26 +3,66 @@
 <head>
     <title>CyberGuide - Popup</title>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="../main.css">
+    <link rel="stylesheet" href="../lib/modern-normalize.css">
+    <script src="../lib/css-scope-inline.js"></script>
 </head>
-<body class="w-52">
-    <div class="w-full flex flex-col justify-center items-center gap-6 
-        my-4">
-        <h1 class="text-xl font-bold">CyberGuide</h1>
-        <button class="bg-rose-500 hover:bg-rose-700 text-white font-bold
-            py-2 px-4 rounded">
+<body>
+    <style> me { width: 40rem; } </style>
+    <div>
+        <style>
+            me { 
+                width: 100%; 
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 2rem;
+                padding: 1rem 2rem 0e 2rem;
+            }
+            me button { 
+                padding: 0.5rem 1rem;
+                border-radius: 1rem;
+                border: 0.2rem solid black;
+                color: white;
+                font-weight: bold;
+                font-size: 1rem;
+                cursor: pointer;
+            }
+        </style>
+
+        <h1>CyberGuide</h1>
+        <button> 
+            <style>
+                me { background-color: #f00; }
+                me:hover { background-color: #f55; }
+            </style>
             Record
         </button>
-        <button id="widget-toggle" class="bg-green-500 hover:bg-green-700 text-white font-bold
-            py-2 px-4 rounded">
+        <button id="widget-toggle">
+            <style>
+                me { background-color: #0f0; }
+                me:hover { background-color: #5f5; }
+            </style>
             Show Widget
         </button>
-        <button class="bg-orange-500 hover:bg-orange-700 text-white font-bold
-            py-2 px-4 rounded">
+        <button>
+            <style>
+                me { background-color: #f60; }
+                me:hover { background-color: #f90; }
+            </style>
             Settings
         </button>
     </div>
-    <div class="flex justify-end px-2">
+    <div>
+        <style>
+            me { 
+                width: 100%;
+                display: flex;
+                justify-content: flex-end;
+                align-items: center;
+                padding: 0 1rem;
+                height: 2rem;
+            }
+        </style>
         <p>Version 0.0.1</p>
     </div>
     <script src="popup.js"></script>
