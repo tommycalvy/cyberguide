@@ -1,5 +1,5 @@
-import BrowserStorageWrapper from './browser-storage-wrapper';
-import Queue from './queue';
+import BrowserStorageWrapper from "./browser-storage-wrapper.js";
+import Queue from "./queue.js";
 
 /**
     * Class representing a storage queue for arrays

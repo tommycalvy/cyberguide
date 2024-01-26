@@ -1,24 +1,38 @@
-const rspack = require("@rspack/core");
-const path = require('path');
-const glob = require('glob');
+import rspack from "@rspack/core";
+import path from "path";
+import { glob } from "glob";
+import { URL } from "url";
 
+const __dirname = new URL('.', import.meta.url).pathname;
 const isProduction = process.env.NODE_ENV === 'production';
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
     context: __dirname,
-    mode: isProduction ? 'production' : 'development',
+    mode: "production",
     watch: true,
     entry: Object.fromEntries(
-        glob.sync(path.resolve(__dirname, 'src/**/*.js')).map((v) => [
-            v.split('src/')[1], v,
-        ]
-    )),
+        new Map(
+            [
+                ["background.js", "./src/background.js"],
+                ["popup/popup.js", "./src/popup/popup.js"],
+                ["settings/settings.js", "./src/settings/settings.js"]
+            ].concat(glob.sync(
+                path.resolve(__dirname, "src/scripts/*.js")).map((v) => {
+                    return [v.split('src/')[1], v]; 
+                })
+            )
+        )
+    ),
     output: {
         filename: "[name]",
         path: path.resolve(__dirname, "dist"),
-//        publicPath: "http://localhost:8080/",
-//        crossOriginLoading: "anonymous",
+    },
+    resolve: {
+        preferRelative: true,
+    },
+    optimization: {
+        minimize: isProduction,
     },
     plugins: glob.sync(path.resolve(__dirname, 'src/**/*.html')).map((v) => {
         return new rspack.HtmlRspackPlugin({
@@ -38,37 +52,10 @@ const config = {
             },
         ],
     })]),
-    module: {
-        rules: [
-            {
-                test: /\.css$/,
-                use: [
-                    {
-                        loader: 'postcss-loader',
-                        options: {
-                            postcssOptions: {
-                                plugins: {
-                                    tailwindcss: {},
-                                    autoprefixer: {},
-                                },
-                            },
-                        },
-                    },
-                ],
-                type: 'css',
-            },
-        ],
-    },
     experiments: {
         rspackFuture: {
             disableApplyEntryLazily: true,
         },
     },
-    devServer: {
-        static: {
-            directory: path.join(__dirname, 'dist'),
-        },
- //       liveReload: false,
-    },
 };
-module.exports = config;
+export default config;
