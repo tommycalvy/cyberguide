@@ -1,10 +1,9 @@
-import browser from "webextension-polyfill";
-
-class BrowserStorageWrapper {
+import browser from "../utils/browser-namespace.js";
+class BrowserStorage {
     #key;
     /**
         * Create a BrowserStorageWrapper
-        * @param {("local"|"sync"|"session"|"managed")} type - Storage type
+        * @param {("local"|"session")} type - Storage type
         * @param {string} key - Key to use
         * @param {any} value - Value to set
         * @memberof BrowserStorageWrapper
@@ -12,18 +11,13 @@ class BrowserStorageWrapper {
     */
     constructor(type="local", key, value) {
         this.#key = key;
+        
         switch (type) {
             case "local":
                 this.storage = browser.storage.local;
                 break;
-            case "sync":
-                this.storage = browser.storage.sync;
-                break;
             case "session":
                 this.storage = browser.storage.session;
-                break;
-            case "managed":
-                this.storage = browser.storage.managed;
                 break;
             default:
                 throw new Error(`Unknown storage type: ${type}`);
@@ -56,4 +50,4 @@ class BrowserStorageWrapper {
     }
 }
 
-export default BrowserStorageWrapper;
+export default BrowserStorage;

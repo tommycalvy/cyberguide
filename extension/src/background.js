@@ -1,13 +1,20 @@
 import browser from "webextension-polyfill";
+import BrowserStorage from "./utils/browser-storage.js";
 import ArrayStorage from "./utils/array-storage.js";
 
 console.log("background.js loaded ");
 
-browser.storage.local.set({ "rActive": false });
-browser.storage.local.set({ "recordedElts": [] });
-browser.storage.local.set({ "rTabIds": [] });
-browser.storage.local.set({ "widgetOpen": false });
-browser.storage.local.set({ "wTabIds": [] });
+const recActive = new BrowserStorage("local", "recActive", false);
+const recordedElts = new ArrayStorage("local", "recordedElts", []);
+const recTabIds = new ArrayStorage("local", "recTabIds", []);
+const widgetActive = new BrowserStorage("local", "widgetActive", false);
+
+
+// browser.storage.local.set({ "rActive": false });
+// browser.storage.local.set({ "recordedElts": [] });
+// browser.storage.local.set({ "rTabIds": [] });
+// browser.storage.local.set({ "widgetOpen": false });
+// browser.storage.local.set({ "wTabIds": [] });
 
 try {
     let testArray = new ArrayStorage("local", "testArray", []);

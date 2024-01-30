@@ -1,16 +1,16 @@
-import BrowserStorageWrapper from "./browser-storage-wrapper.js";
+import BrowserStorage from "./browser-storage.js";
 import Queue from "./queue.js";
 
 /**
     * Class representing a storage queue for arrays
-    * @extends BrowserStorageWrapper
+    * @extends BrowserStorage
 */
-class ArrayStorage extends BrowserStorageWrapper {
+class ArrayStorage extends BrowserStorage {
 
     #queue;
     /**
         * Create an ArrayStorage
-        * @param {("local"|"sync"|"session"|"managed")} type - Storage type
+        * @param {("local"|"session")} type - Storage type
         * @param {string} key - Key to use
         * @param {Array} value - Value to set
     */
