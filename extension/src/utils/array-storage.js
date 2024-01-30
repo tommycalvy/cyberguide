@@ -47,7 +47,7 @@ class ArrayStorage extends BrowserStorage {
                 let array = result[super.key];
                 array.push(item);
                 let newArray = await super.set(array);
-                resolve(newArray);
+                resolve([newArray, item]);
             } catch (err) {
                 reject(err);
             }
@@ -70,7 +70,7 @@ class ArrayStorage extends BrowserStorage {
                     throw new Error("item already in array");
                 }
                 let newArray = await super.set(array);
-                resolve(newArray);
+                resolve([newArray, item]);
             } catch (err) {
                 reject(err);
             }

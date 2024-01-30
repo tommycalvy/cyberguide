@@ -1,7 +1,8 @@
 import browser from "webextension-polyfill";
+import BrowserStorage from "../utils/browser-storage.js"; 
 
-browser.storage.local.set({ "widgetOpen": true });
-const { recordingActive } = await browser.storage.local.get("recordingActive");
+let widgetActive = new BrowserStorage("local", "widgetActive", true);
+let recordingActive = new BrowserStorage("local", "recordingActive");
 
 const bport = browser.runtime.connect({ name: "widget" });
 bport.postMessage({ type: "init" });
@@ -11,7 +12,7 @@ bport.onMessage.addListener((msg) => {
         console.log("background.js: ", msg.message);
     }
 });
-const wRecordButtonText = recordingActive ? "Stop" : "Record";
+const wRecordButtonText = await recordingActive.get()  ? "Stop" : "Record";
 
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
@@ -53,9 +54,9 @@ if (widgetClose == null) {
     throw new Error("widgetClose is null");
 }
 
-widgetClose.addEventListener("click", () => {
+widgetClose.addEventListener("click", async () => {
     shadowHost.remove();
-    browser.storage.local.set({ "widgetOpen": false });
+    await widgetActive.set(false);
 });
 
 dragElement(widget);
@@ -132,7 +133,7 @@ if (widgetRecord instanceof HTMLButtonElement === false) {
 }
 
 widgetRecord.addEventListener("click", async () => {
-    if (recordingActive) {
+    if (await recordingActive.get()) {
         bport.postMessage({
             type: "stop-recording",
         });

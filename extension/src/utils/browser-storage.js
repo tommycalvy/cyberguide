@@ -9,7 +9,7 @@ class BrowserStorage {
         * @memberof BrowserStorageWrapper
         * @inner
     */
-    constructor(type="local", key, value) {
+    constructor(type="local", key, value=null) {
         this.#key = key;
         
         switch (type) {

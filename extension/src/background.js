@@ -1,15 +1,31 @@
-import browser from "webextension-polyfill";
 import BrowserStorage from "./utils/browser-storage.js";
 import ArrayStorage from "./utils/array-storage.js";
+import { MessageListener, Port } from "./utils/message-listener.js";
+import { executeScript } from "./utils/execute-script.js";
+import { getCurrentTabId } from "./utils/get-current-tab.js";
 
 console.log("background.js loaded ");
 
-const recActive = new BrowserStorage("local", "recActive", false);
+const recordingActive = new BrowserStorage("local", "recordingActive", false);
 const recordedElts = new ArrayStorage("local", "recordedElts", []);
-const recTabIds = new ArrayStorage("local", "recTabIds", []);
+const recordingTabIds = new ArrayStorage("local", "recordingTabIds", []);
 const widgetActive = new BrowserStorage("local", "widgetActive", false);
+const widgetTabIds = new ArrayStorage("local", "widgetTabIds", []);
 
+const listener = new MessageListener(true);
+const popupPort = new Port("popup", listener);
 
+popupPort.onMessage("show-widget", () => {
+    const currentTabIdPromise = getCurrentTabId();
+    widgetTabIds.pushUnique(currentTabIdPromise).then(([ids, id]) => {
+        console.log("widgetTabIds: ", ids);
+        widgetActive.set(true);
+        executeScript(id, ["scripts/widget.js"]);
+    }).catch((err) => {
+        console.error(err);
+        //TODO: Send error message to popup
+    });
+});
 // browser.storage.local.set({ "rActive": false });
 // browser.storage.local.set({ "recordedElts": [] });
 // browser.storage.local.set({ "rTabIds": [] });
@@ -18,22 +34,24 @@ const widgetActive = new BrowserStorage("local", "widgetActive", false);
 
 try {
     let testArray = new ArrayStorage("local", "testArray", []);
-    testArray.push(1);
-    testArray.push(2);
-    testArray.push(3);
-    testArray.push(4);
-    testArray.push(5);
-    testArray.pushUnique(5);
-    testArray.pushUnique(6);
-    testArray.pushUnique(7);
-    testArray.pushUnique(8);
-    testArray.print();
-    testArray.removeItem(7);
-    testArray.removeItem(10);
-    testArray.print();
+    await testArray.push(1);
+    await testArray.push(2);
+    await testArray.push(3);
+    await testArray.push(4);
+    await testArray.push(5);
+    await testArray.pushUnique(5);
+    await testArray.pushUnique(6);
+    await testArray.pushUnique(7);
+    await testArray.pushUnique(8);
+    await testArray.print();
+    await testArray.removeItem(7);
+    await testArray.removeItem(10);
+    await testArray.print();
 } catch (err) {
     console.error(err);
 }
+
+/*
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (msg) =>  {
         try {
@@ -156,36 +174,5 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     }
 });
 
-/**
-    * Execute script in specified tab
-    * @param {number} tabId - Id of tab to execute script in
-    * @param {string[]} files - Function to execute
-    * @returns {Promise} - Promise that resolves when script is executed
 */
-async function executeScript(tabId, files) {
-    return browser.scripting.executeScript({
-        target: { tabId: tabId },
-        injectImmediately: true,
-        files: files
-    });
-}
 
-/**
-    * Insert CSS in specified tab
-    * @param {number} tabId - Id of tab to insert CSS in
-    * @param {string[]} files - CSS files to insert
-    * @returns {Promise} - Promise that resolves when CSS is inserted
-*/
-async function insertCSS(tabId, files) {
-    return browser.scripting.insertCSS({
-        target: { tabId: tabId },
-        files: files
-    });
-}
-
-async function getCurrentTab() {
-    let queryOptions = { active: true, lastFocusedWindow: true };
-    // `tab` will either be a `tabs.Tab` instance or `undefined`.
-    let [tab] = await browser.tabs.query(queryOptions);
-    return tab;
-}
