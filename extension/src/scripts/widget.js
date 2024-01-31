@@ -1,46 +1,89 @@
-import browser from "webextension-polyfill";
 import BrowserStorage from "../utils/browser-storage.js"; 
+import Port from "../utils/message-producer.js";
+import modernNormalizeCss from "../lib/modern-normalize-css.js";
+import cssScopeInlineShadow from "../lib/css-scope-inline-shadow.js";
 
 let widgetActive = new BrowserStorage("local", "widgetActive", true);
 let recordingActive = new BrowserStorage("local", "recordingActive");
 
-const bport = browser.runtime.connect({ name: "widget" });
+const bport = new Port("widget", true);
 bport.postMessage({ type: "init" });
 
-bport.onMessage.addListener((msg) => {
-    if (msg.type === "handle-init") {
-        console.log("background.js: ", msg.message);
-    }
+bport.onMessage("handle-init", (msg) => {
+    console.log("background.js: ", msg.message);
 });
+
 const wRecordButtonText = await recordingActive.get()  ? "Stop" : "Record";
 
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+cssScopeInlineShadow(shadowRoot);
 shadowRoot.innerHTML = ` 
     <div id="widget" class="fixed top-52 right-5 z-[999999] bg-cyan-400
         bg-opacity-80 w-20 min-h-72 flex items-center flex-col
         justify-between pb-4 overflow-hidden border-solid border-sky-800
         border-4 rounded-full border-opacity-80 transition-opacity
         ease-out duration-75">
+        <style>
+            me {
+                position: fixed;
+                top: 52;
+                right: 5;
+                z-index: 999999;
+                background-color: #00FFFFCC;
+                width: 20rem;
+                height: 18rem;
+                display: flex;
+                align-items: center;
+                flex-direction: column;
+                justify-content: space-between;
+                padding-bottom: 1rem;
+                overflow: hidden;
+                border: 0.2rem solid #87CEEBCC;
+                border-radius: 50%;
+                transition: opacity 75ms ease-out;
+            }
+            me button {
+                color: black;
+                font-weight: bold;
+                height: 4rem;
+                select: none;
+            }
+        </style>
             <button id ="widget-move" class="w-full h-8 bg-white text-black
                 hover:bg-gray-100 font-bold cursor-grab select-none">
+                <style>
+                    me { cursor: grab; width: 100%; background-color: #FFFFFF;}
+                    me:hover { background-color: #F5F5F5; }
+                </style>
                 M
             </button>
             <button id="widget-record" class="w-14 h-8 bg-red-500 text-black
                 hover:bg-red-700 font-bold">
+                <style>
+                    me { width: 5.5rem; background-color: #FF0000; }
+                    me:hover { background-color: #8B0000; }
+                </style>
                 ${wRecordButtonText}
             </button>
             <button id="widget-close" class="border-black select-none
                 bg-white hover:bg-gray-100 text-black font-bold
-                w-8 h-8 rounded-full">X</button>
+                w-8 h-8 rounded-full">
+                <style>
+                    me {
+                        background-color: #FFFFFF;
+                        width: 4rem;
+                        border: 0.2rem solid #000000;
+                        border-radius: 50%;
+                    }
+                    me:hover { background-color: #F5F5F5; }
+                </style>
+                X
+            </button>
     </div>
 `;
 
-const cssUrl = browser.runtime.getURL("main.css");
-const styles = await fetch(cssUrl).then((response) => response.text());
-const stylesheet = new CSSStyleSheet();
-stylesheet.replaceSync(styles);
-shadowRoot.adoptedStyleSheets = [stylesheet];
+shadowRoot.adoptedStyleSheets = [modernNormalizeCss];
 
 document.body.appendChild(shadowHost);
 
@@ -134,14 +177,10 @@ if (widgetRecord instanceof HTMLButtonElement === false) {
 
 widgetRecord.addEventListener("click", async () => {
     if (await recordingActive.get()) {
-        bport.postMessage({
-            type: "stop-recording",
-        });
+        bport.postMessage({ type: "stop-recording" });
         widgetRecord.innerHTML = "Record";
         return;
     }
-    bport.postMessage({
-        type: "start-recording",
-    });
+    bport.postMessage({ type: "start-recording" });
     widgetRecord.innerHTML = "Stop";
 });

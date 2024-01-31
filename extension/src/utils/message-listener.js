@@ -84,17 +84,18 @@ class MessageListener {
 
     /**
         * @param {string} portName
+        * @param {string} msgType
         * @param {function} listener
         * @memberof MessageListener
         * @inner
         * @returns {void}
         * @throws {Error}
     */
-    addMsgListener(portName, listener) {
+    addMsgListener(portName, msgType, listener) {
         if (!this.#ports[portName]) {
             throw new Error(`No port with name: ${portName}`);
         }
-        this.#ports[portName].listeners[listener.name] = listener;
+        this.#ports[portName].listeners[msgType] = listener;
     }
 }
 
@@ -102,7 +103,6 @@ class Port {
 
     #portName;
     #messageListener;
-    #listeners;
 
     /**
         * Create a BrowserMessage
@@ -112,23 +112,22 @@ class Port {
     constructor(portName, messageListener) {
         this.#portName = portName;
         this.#messageListener = messageListener;
-        this.#listeners = [];
         this.#messageListener.addPort(this.#portName);
     }
 
     /**
-        * @param {string} type
+        * @param {string} msgType
         * @param {function} listener
         * @memberof Port
         * @inner
         * @returns {void}
         * @throws {Error}
     */
-    onMessage(type, listener) {
-        if (this.#listeners.includes(type)) {
-            throw new Error(`Listener for type ${type} already exists`);
+    onMessage(msgType, listener) {
+        if (!msgType) {
+            throw new Error("No message type provided");
         }
-        this.#messageListener.addMsgListener(this.#portName, listener);
+        this.#messageListener.addMsgListener(this.#portName, msgType, listener);
     }
 
     postMessage(msg) {
