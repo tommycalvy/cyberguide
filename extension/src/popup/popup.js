@@ -1,31 +1,19 @@
-import browser from "webextension-polyfill";
+import Port from "../utils/message-producer.js";
 console.log("popup.js loaded");
 
 // Establish connection with background.js
-const bport = browser.runtime.connect({ name: "popup"});
+const bport = new Port("popup", true);
 bport.postMessage({ type: "init" });
 
-bport.onMessage.addListener((msg) => {
-    if (msg.type === "handle-init") {
-        console.log("popup.js: ", msg.message);
-    }
+bport.onMessage("hanlde-init", (msg) => {
+    console.log("popup.js: ", msg.message);
 });
 
 const widgetToggle = document.getElementById("widget-toggle");
 if (widgetToggle instanceof HTMLButtonElement) {
     widgetToggle.addEventListener("click", async () => {
-        let tab = await getCurrentTab();
-        bport.postMessage({
-            type: "show-widget",
-            tabId: tab.id
-        });
+        bport.postMessage({ type: "show-widget" });
     });
 } else {
     console.error("panelToggle is null");
-}
-async function getCurrentTab() {
-    let queryOptions = { active: true, lastFocusedWindow: true };
-    // `tab` will either be a `tabs.Tab` instance or `undefined`.
-    let [tab] = await browser.tabs.query(queryOptions);
-    return tab;
 }

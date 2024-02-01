@@ -47,6 +47,10 @@ class Port {
             throw new Error("No message type provided");
         }
     }
+
+    disconnect() {
+        this.port.disconnect();
+    }
     
 }
 

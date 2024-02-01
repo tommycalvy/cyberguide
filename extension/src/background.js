@@ -31,26 +31,6 @@ popupPort.onMessage("show-widget", () => {
 // browser.storage.local.set({ "rTabIds": [] });
 // browser.storage.local.set({ "widgetOpen": false });
 // browser.storage.local.set({ "wTabIds": [] });
-
-try {
-    let testArray = new ArrayStorage("local", "testArray", []);
-    await testArray.push(1);
-    await testArray.push(2);
-    await testArray.push(3);
-    await testArray.push(4);
-    await testArray.push(5);
-    await testArray.pushUnique(5);
-    await testArray.pushUnique(6);
-    await testArray.pushUnique(7);
-    await testArray.pushUnique(8);
-    await testArray.print();
-    await testArray.removeItem(7);
-    await testArray.removeItem(10);
-    await testArray.print();
-} catch (err) {
-    console.error(err);
-}
-
 /*
 browser.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (msg) =>  {

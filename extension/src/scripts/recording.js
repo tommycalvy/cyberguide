@@ -1,27 +1,57 @@
-import browser from 'webextension-polyfill';
+import BrowserStorage from "../utils/browser-storage.js";
+import ArrayStorage from "../utils/array-storage.js";
+import Port from "../utils/message-producer.js";
+import modernNormalizeCss from '../lib/modern-normalize-css';
+import cssScopeInlineShadow from '../lib/css-scope-inline-shadow';
 
-const { rActive } = await browser.storage.local.get('rActive');
+const recordingActive = new BrowserStorage("local", "recordingActive");
+const recordedElts = new ArrayStorage("local", "recordedElts");
 
-if (!rActive) {
+if (!await recordingActive.get()) {
 
     const shadowHost = document.createElement('div');
     const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    cssScopeInlineShadow(shadowRoot);
 
     shadowRoot.innerHTML = `
-        <div id="count-down" class="fixed w-full h-full top-0 left-0 z-[999999]
-            flex items-center justify-center bg-black bg-opacity-50">
-            <div class="flex items-center justify-center w-96 h-96 bg-white
-                rounded-full">
-                <div id="count-down-number" class="text-9xl font-bold">3</div>
+        <div id="count-down">
+            <style>
+                me {
+                    position: fixed;
+                    width: 100%;
+                    height: 100%;
+                    top: 0;
+                    left: 0;
+                    z-index: 999999;
+                    background-color: #00000080;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+            </style>
+            <div>
+                <style>
+                    me {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 24rem;
+                        height: 24rem;
+                        background-color: #FFFFFF;
+                        border-radius: 50%;
+                    }
+                    me div {
+                        color: #000000;
+                        font-size: 12rem;
+                        font-weight: bold;
+                    }
+                </style>
+                <div id="count-down-number">3</div>
             </div>
         </div>
     `;
 
-    const cssUrl = browser.runtime.getURL('main.css');
-    const styles = await fetch(cssUrl).then((response) => response.text());
-    const stylesheet = new CSSStyleSheet();
-    stylesheet.replaceSync(styles);
-    shadowRoot.adoptedStyleSheets = [stylesheet];
+    shadowRoot.adoptedStyleSheets = [modernNormalizeCss];
 
     document.body.appendChild(shadowHost);
 
@@ -49,8 +79,7 @@ if (!rActive) {
             }, 1000);
         }, 1000);
     }, 1000);
-
-    browser.storage.local.set({ "rActive": true });
+    await recordingActive.set(true);
 }
 
 /**
@@ -79,18 +108,15 @@ function recordClick(e) {
             url: url,
             elt: e.target
         };
-        browser.storage.local.get('recordedElts').then((result) => {
-            let recordedElts = result.recordedElts;
-            recordedElts.push(recordedElt);
-            browser.storage.local.set({ "recordedElts": recordedElts });
-        });
+        recordedElts.pushUnique(recordedElt);
         e.target.removeEventListener('pointerup', logElement);
     });
 }
 
 document.addEventListener('pointerdown', recordClick);
 
-const bport = browser.runtime.connect({ name: "recording" });
+const bport = new Port("recording");
+
 bport.postMessage({
     type: "init",
     message: "recording script connected"
@@ -98,20 +124,19 @@ bport.postMessage({
 
 let tabId = null;
 
-bport.onMessage.addListener(async (msg) => {
-    if (msg.type === "handle-init") {
+bport.onMessage("handle-init", (msg) => {
         console.log("background.js: ", msg.message);
         tabId = msg.tabId;
-    }
-    if (msg.type === "stop-recording") {
-        console.log("stop recording message received");
-        document.removeEventListener('pointerdown', recordClick);
-        bport.postMessage({
-            type: "recording-script-shutdown",
-            tabId: tabId
-        });
-        bport.disconnect();
-    }
+});
+
+bport.onMessage("stop-recording", () => {
+    console.log("stop recording message received");
+    document.removeEventListener('pointerdown', recordClick);
+    bport.postMessage({
+        type: "recording-script-shutdown",
+        tabId: tabId
+    });
+    bport.disconnect();
 });
 
 /**

@@ -1,5 +1,5 @@
 import browser from "../utils/browser-namespace.js";
-import getCurrentTab from "../utils/get-current-tab.js";
+import { getCurrentTab } from "../utils/get-current-tab.js";
 
 /**
     * Execute script in specified tab

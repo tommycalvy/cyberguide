@@ -18,12 +18,9 @@ const wRecordButtonText = await recordingActive.get()  ? "Stop" : "Record";
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
 cssScopeInlineShadow(shadowRoot);
+
 shadowRoot.innerHTML = ` 
-    <div id="widget" class="fixed top-52 right-5 z-[999999] bg-cyan-400
-        bg-opacity-80 w-20 min-h-72 flex items-center flex-col
-        justify-between pb-4 overflow-hidden border-solid border-sky-800
-        border-4 rounded-full border-opacity-80 transition-opacity
-        ease-out duration-75">
+    <div id="widget">
         <style>
             me {
                 position: fixed;
@@ -50,25 +47,21 @@ shadowRoot.innerHTML = `
                 select: none;
             }
         </style>
-            <button id ="widget-move" class="w-full h-8 bg-white text-black
-                hover:bg-gray-100 font-bold cursor-grab select-none">
+            <button id="widget-move">
                 <style>
                     me { cursor: grab; width: 100%; background-color: #FFFFFF;}
                     me:hover { background-color: #F5F5F5; }
                 </style>
                 M
             </button>
-            <button id="widget-record" class="w-14 h-8 bg-red-500 text-black
-                hover:bg-red-700 font-bold">
+            <button id="widget-record">
                 <style>
                     me { width: 5.5rem; background-color: #FF0000; }
                     me:hover { background-color: #8B0000; }
                 </style>
                 ${wRecordButtonText}
             </button>
-            <button id="widget-close" class="border-black select-none
-                bg-white hover:bg-gray-100 text-black font-bold
-                w-8 h-8 rounded-full">
+            <button id="widget-close">
                 <style>
                     me {
                         background-color: #FFFFFF;
