@@ -1,4 +1,4 @@
-import browser from "../utils/browser-namespace.js";
+import browser from "webextension-polyfill";
 
 class Port {
     #portName;
@@ -28,24 +28,32 @@ class Port {
         });
     }
 
+    /**
+        * @param {any} msg
+    */
     postMessage(msg) {
         return this.port.postMessage(msg);
     }
 
     /**
+        * @typedef {object} Message
+        * @property {string} Message.type
+        * @property {string} [Message.message]
+        * @property {any} [Message.data]
+    */
+
+    /**
+        * @callback OnMessageListener
+        * @param {Message} msg
+    */
+
+    /**
         * @param {string} msgType
-        * @param {function} listener
-        * @memberof Port
-        * @inner
+        * @param {OnMessageListener} listener
         * @returns {void}
-        * @throws {Error} No message type provided
     */
     onMessage(msgType, listener) {
-        if (msgType) {
-            this.#listeners[msgType] = listener;
-        } else {
-            throw new Error("No message type provided");
-        }
+        this.#listeners[msgType] = listener;
     }
 
     disconnect() {

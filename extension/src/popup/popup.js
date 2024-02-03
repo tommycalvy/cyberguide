@@ -3,7 +3,7 @@ console.log("popup.js loaded");
 
 // Establish connection with background.js
 const bport = new Port("popup", true);
-bport.postMessage({ type: "init" });
+bport.postMessage({ type: "init", message: "hello from popup" });
 
 bport.onMessage("hanlde-init", (msg) => {
     console.log("popup.js: ", msg.message);

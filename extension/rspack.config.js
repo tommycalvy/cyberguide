@@ -4,13 +4,13 @@ import { glob } from "glob";
 import { URL } from "url";
 
 const __dirname = new URL('.', import.meta.url).pathname;
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'prod';
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
     context: __dirname,
     mode: "production",
-    watch: true,
+    watch: !isProduction,
     entry: Object.fromEntries(
         new Map(
             [
@@ -47,8 +47,8 @@ const config = {
                 to: path.resolve(__dirname, 'dist/manifest.json'),
             },
             {
-                from: path.resolve(__dirname, 'src/assets'),
-                to: path.resolve(__dirname, 'dist/assets'),
+                from: path.resolve(__dirname, 'src/icons'),
+                to: path.resolve(__dirname, 'dist/icons'),
             },
             {
                 from: path.resolve(__dirname, 'src/lib'),

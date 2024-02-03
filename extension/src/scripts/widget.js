@@ -24,8 +24,8 @@ shadowRoot.innerHTML = `
         <style>
             me {
                 position: fixed;
-                top: 52;
-                right: 5;
+                top: 5rem;
+                right: 5rem;
                 z-index: 999999;
                 background-color: #00FFFFCC;
                 width: 20rem;
@@ -37,7 +37,7 @@ shadowRoot.innerHTML = `
                 padding-bottom: 1rem;
                 overflow: hidden;
                 border: 0.2rem solid #87CEEBCC;
-                border-radius: 50%;
+                border-radius: 1rem;
                 transition: opacity 75ms ease-out;
             }
             me button {

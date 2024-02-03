@@ -1,3 +1,4 @@
+import browser from "webextension-polyfill";
 import BrowserStorage from "./utils/browser-storage.js";
 import ArrayStorage from "./utils/array-storage.js";
 import { MessageListener, Port } from "./utils/message-listener.js";
@@ -15,15 +16,38 @@ const widgetTabIds = new ArrayStorage("local", "widgetTabIds", []);
 const listener = new MessageListener(true);
 const popupPort = new Port("popup", listener);
 
+popupPort.onMessage("init", (msg) => {
+    console.log("popup.js: ", msg.message);
+});
+
+
 popupPort.onMessage("show-widget", () => {
-    const currentTabIdPromise = getCurrentTabId();
-    widgetTabIds.pushUnique(currentTabIdPromise).then(([ids, id]) => {
+    getCurrentTabId().then((id) => {;
+        return widgetTabIds.pushUnique(id);
+    }).then(([ids, id]) => {
         console.log("widgetTabIds: ", ids);
         widgetActive.set(true);
-        executeScript(id, ["scripts/widget.js"]);
+        return executeScript(id, ["scripts/widget.js"]);
     }).catch((err) => {
         console.error(err);
         //TODO: Send error message to popup
+    });
+});
+
+const widgetPort = new Port("widget", listener);
+widgetPort.onMessage("init", () => {
+    console.log("hello from background");
+});
+
+widgetPort.onMessage("start-recording", () => {
+    getCurrentTabId().then((tabId) => {
+        return recordingTabIds.pushUnique(tabId)
+    }).then(([ids, id]) => {
+        console.log("recordingTabIds: ", ids);
+        recordingActive.set(true);
+        return executeScript(id, ["scripts/recording.js"]);
+    }).catch((err) => {
+        console.error(err);
     });
 });
 // browser.storage.local.set({ "rActive": false });

@@ -1,8 +1,8 @@
 import BrowserStorage from "../utils/browser-storage.js";
 import ArrayStorage from "../utils/array-storage.js";
 import Port from "../utils/message-producer.js";
-import modernNormalizeCss from '../lib/modern-normalize-css';
-import cssScopeInlineShadow from '../lib/css-scope-inline-shadow';
+import modernNormalizeCss from '../lib/modern-normalize-css.js';
+import cssScopeInlineShadow from '../lib/css-scope-inline-shadow.js';
 
 const recordingActive = new BrowserStorage("local", "recordingActive");
 const recordedElts = new ArrayStorage("local", "recordedElts");
@@ -125,8 +125,11 @@ bport.postMessage({
 let tabId = null;
 
 bport.onMessage("handle-init", (msg) => {
-        console.log("background.js: ", msg.message);
-        tabId = msg.tabId;
+    console.log("background.js: ", msg.message);
+    if (!msg.data.tabId) {
+        throw new Error("No tabId in init message");
+    }
+    tabId = msg.data.tabId;
 });
 
 bport.onMessage("stop-recording", () => {

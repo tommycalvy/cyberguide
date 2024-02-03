@@ -1,4 +1,4 @@
-import browser from "../utils/browser-namespace.js";
+import browser from "webextension-polyfill";
 import { getCurrentTab } from "../utils/get-current-tab.js";
 
 /**
@@ -7,15 +7,13 @@ import { getCurrentTab } from "../utils/get-current-tab.js";
     * @param {string[]} files - Function to execute
     * @returns {Promise} - Promise that resolves when script is executed
 */
-async function executeScript(tabId, files) {
+function executeScript(tabId, files) {
     return browser.scripting.executeScript({
         target: { tabId: tabId },
         injectImmediately: true,
         files: files
     });
 }
-
-
 
 /**
     * Execute script in current tab
@@ -24,7 +22,12 @@ async function executeScript(tabId, files) {
 */
 async function executeScriptInCurrentTab(files) {
     let tab = await getCurrentTab();
+    if (!tab.id) {
+        throw new Error("No tab id found");
+    }
     return executeScript(tab.id, files);
 }
+
+
 
 export { executeScript, executeScriptInCurrentTab };

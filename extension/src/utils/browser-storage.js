@@ -1,4 +1,4 @@
-import browser from "../utils/browser-namespace.js";
+import browser from "webextension-polyfill";
 class BrowserStorage {
     #key;
     /**

@@ -1,4 +1,4 @@
-import browser from "../utils/browser-namespace.js";
+import browser from "webextension-polyfill";
 
 /** Class that creates a runtime.onConnect listener and returns the ports */
 class MessageListener {
@@ -24,8 +24,8 @@ class MessageListener {
                         if (this.#logging) {
                             console.log(port.name, ": ", msg.type);
                         }
-                        if (p.listener[msg.type]) {
-                            p.listener[msg.type](msg);
+                        if (p.listeners[msg.type]) {
+                            p.listeners[msg.type](msg);
                         } else if (this.#logging) {
                             console.error(
                                 "No listener for msg type:", 
@@ -65,8 +65,6 @@ class MessageListener {
    
     /**
         * @param {string} portName
-        * memberof MessageListener
-        * @inner
         * @returns {Promise<any>}
     */
     getPort(portName) {
@@ -77,8 +75,9 @@ class MessageListener {
                 reject(new Error(`Port ${portName} has null port`));
             } else if (!this.#ports[portName].connected) {
                 reject(new Error(`Port ${portName} is disconnected`));
+            } else {
+                resolve(this.#ports[portName].port);
             }
-            resolve(this.#ports[portName].port);
         });
     }
 
@@ -86,8 +85,6 @@ class MessageListener {
         * @param {string} portName
         * @param {string} msgType
         * @param {function} listener
-        * @memberof MessageListener
-        * @inner
         * @returns {void}
         * @throws {Error}
     */
@@ -102,48 +99,64 @@ class MessageListener {
 class Port {
 
     #portName;
-    #messageListener;
+    #msgListener;
 
     /**
         * Create a BrowserMessage
         * @param {string} portName - Port name
-        * @param {MessageListener} messageListener - Message listener
+        * @param {MessageListener} msgListener - Message listener
     */
-    constructor(portName, messageListener) {
+    constructor(portName, msgListener) {
         this.#portName = portName;
-        this.#messageListener = messageListener;
-        this.#messageListener.addPort(this.#portName);
+        this.#msgListener = msgListener;
+        this.#msgListener.addPort(this.#portName);
     }
 
     /**
+        * @typedef {object} Message
+        * @property {string} Message.type
+        * @property {string} [Message.message]
+        * @property {any} [Message.data]
+    */
+
+    /**
+        * @callback OnMessageListener
+        * @param {Message} msg
+    */
+
+    /**
         * @param {string} msgType
-        * @param {function} listener
-        * @memberof Port
-        * @inner
+        * @param {OnMessageListener} listener
         * @returns {void}
         * @throws {Error}
     */
     onMessage(msgType, listener) {
-        if (!msgType) {
-            throw new Error("No message type provided");
-        }
-        this.#messageListener.addMsgListener(this.#portName, msgType, listener);
+        this.#msgListener.addMsgListener(this.#portName, msgType, listener);
     }
 
+    /**
+        * @param {object} msg
+        * @param {string} msg.type
+        * @memberof Port
+        * @inner
+        * @returns {Promise<any>}
+        * @throws {Error} No msg type
+        * @throws {Error} No port with name
+        * @throws {Error} Port has null port
+        * @throws {Error} Port is disconnected
+    */
     postMessage(msg) {
+        if (!msg.type) {
+            throw new Error("No msg type");
+        }
         return new Promise(async (resolve, reject) => {
-            if (!msg.type) {
-                reject(new Error("No msg type"));
-            }
-            let port = await this.#messageListener.getPort(this.#portName)
-                .catch((err) => {
-                    reject(err);
-                });
-            port.postMessage(msg).then((val) => {
+            this.#msgListener.getPort(this.#portName).then((port) => {
+                return port.postMessage(msg)
+            }).then((val) => {
                     resolve(val);
-                }).catch((err) => {
+            }).catch((err) => {
                     reject(err);
-                });
+            });
         });
     }
 
