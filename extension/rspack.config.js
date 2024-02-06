@@ -21,6 +21,10 @@ const config = {
                 path.resolve(__dirname, "src/scripts/*.js")).map((v) => {
                     return [v.split('src/')[1], v]; 
                 })
+            ).concat(glob.sync(
+                path.resolve(__dirname, "src/utils/*.js")).map((v) => {
+                    return [v.split('src/')[1], v]; 
+                })
             )
         )
     ),

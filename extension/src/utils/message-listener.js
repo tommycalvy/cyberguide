@@ -135,10 +135,7 @@ class Port {
     }
 
     /**
-        * @param {object} msg
-        * @param {string} msg.type
-        * @memberof Port
-        * @inner
+        * @param {Message} msg
         * @returns {Promise<any>}
         * @throws {Error} No msg type
         * @throws {Error} No port with name

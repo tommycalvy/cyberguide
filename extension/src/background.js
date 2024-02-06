@@ -15,16 +15,14 @@ const widgetTabIds = new ArrayStorage("local", "widgetTabIds", []);
 
 const listener = new MessageListener(true);
 const popupPort = new Port("popup", listener);
+const widgetPort = new Port("widget", listener);
 
-popupPort.onMessage("init", (msg) => {
-    console.log("popup.js: ", msg.message);
+popupPort.onMessage("handle-init", () => {
+    popupPort.postMessage({ type: "init", message: "hello from background" });
 });
 
-
 popupPort.onMessage("show-widget", () => {
-    getCurrentTabId().then((id) => {;
-        return widgetTabIds.pushUnique(id);
-    }).then(([ids, id]) => {
+    widgetTabIds.pushUnique(getCurrentTabId()).then(([ids, id]) => {
         console.log("widgetTabIds: ", ids);
         widgetActive.set(true);
         return executeScript(id, ["scripts/widget.js"]);
@@ -34,15 +32,23 @@ popupPort.onMessage("show-widget", () => {
     });
 });
 
-const widgetPort = new Port("widget", listener);
-widgetPort.onMessage("init", () => {
-    console.log("hello from background");
+popupPort.onMessage("start-recording", () => {
+    recordingTabIds.pushUnique(getCurrentTabId()).then(([ids, id]) => {
+        console.log("recordingTabIds: ", ids);
+        recordingActive.set(true);
+        return executeScript(id, ["scripts/recording.js"]);
+    }).catch((err) => {
+        console.error(err);
+    });
+});
+
+
+widgetPort.onMessage("handle-init", () => {
+    widgetPort.postMessage({ type: "init", message: "hello from background" });
 });
 
 widgetPort.onMessage("start-recording", () => {
-    getCurrentTabId().then((tabId) => {
-        return recordingTabIds.pushUnique(tabId)
-    }).then(([ids, id]) => {
+    recordingTabIds.pushUnique(getCurrentTabId()).then(([ids, id]) => {
         console.log("recordingTabIds: ", ids);
         recordingActive.set(true);
         return executeScript(id, ["scripts/recording.js"]);

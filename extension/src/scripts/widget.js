@@ -7,14 +7,13 @@ let widgetActive = new BrowserStorage("local", "widgetActive", true);
 let recordingActive = new BrowserStorage("local", "recordingActive");
 
 const bport = new Port("widget", true);
-bport.postMessage({ type: "init" });
-
-bport.onMessage("handle-init", (msg) => {
-    console.log("background.js: ", msg.message);
+bport.postMessage({ type: "handle-init" });
+bport.onMessage("init", (msg) => {
+    console.log("background: ", msg.message);
 });
 
 const wRecordButtonText = await recordingActive.get()  ? "Stop" : "Record";
-
+console.log("wRecordButtonText: ", wRecordButtonText);
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
 cssScopeInlineShadow(shadowRoot);

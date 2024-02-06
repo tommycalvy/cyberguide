@@ -18,17 +18,19 @@ class ArrayStorage extends BrowserStorage {
         super(type, key, value);
         this.#queue = new Queue();
     }
-
+    
+    /**
+        * @returns {Promise<Array>}
+    */
     get() {
         return this.#queue.enqueue(new Promise((resolve, reject) => {
             super.get().then((result) => {
                 return result[super.key];
             }).then((array) => {
-                if (Array.isArray(array)) {
-                    resolve(array);
-                } else {
-                    reject(new Error("stored object is not an array"));
+                if (!Array.isArray(array)) {
+                    throw new Error("stored object is not an array");
                 }
+                resolve(array);
             }).catch((err) => {
                 reject(err);
             });
@@ -40,16 +42,11 @@ class ArrayStorage extends BrowserStorage {
         * @returns {Promise<void>}
     */
     replaceValues(values) {
-        return this.#queue.enqueue(new Promise((resolve, reject) => {
-            if (!Array.isArray(values)) {
-                reject(new Error("value is not an array"));
-            } else {
-                super.set(values).then((result) => {
-                    resolve(result);
-                }).catch((err) => {
-                    reject(err);
-                });
-            }
+        if (!Array.isArray(values)) {
+            throw new Error("value is not an array");
+        }
+        return this.#queue.enqueue(new Promise((resolve) => { 
+            resolve(super.set(values));
         }));
     }
 
@@ -58,15 +55,14 @@ class ArrayStorage extends BrowserStorage {
     }
 
     /**
-        * @param {any} promise
-        * @returns {Promise<Array>}
-        * @memberof ArrayStorage
+        * @param {Promise<any>} promise
+        * @returns {Promise<[Array, any]>}
     */
     push(promise) {
         return this.#queue.enqueue(new Promise((resolve, reject) => {
             Promise.all([super.get(), promise]).then(([result, item]) => {
                 return [result[super.key], item];
-            }).then(([array, item]) => {
+            }).then(async ([array, item]) => {
                 if (Array.isArray(array)) {
                     array.push(item);
                 } else if (array === null || array === undefined) {
@@ -74,9 +70,8 @@ class ArrayStorage extends BrowserStorage {
                 } else {
                     throw new Error("stored object is not an array");
                 }
-                return [super.set(array), item];
-            }).then(([newArray, item]) => {
-                resolve([newArray, item]);
+                await super.set(array);
+                resolve([array, item]);
             }).catch((err) => {
                 reject(err);
             });
@@ -84,15 +79,14 @@ class ArrayStorage extends BrowserStorage {
     }
 
     /**
-        * @param {any} promise
-        * @returns {Promise<Array>}
-        * @memberof ArrayStorage
+        * @param {Promise<any>} promise
+        * @returns {Promise<[Array, any]>}
     */
     pushUnique(promise) {
         return this.#queue.enqueue(new Promise((resolve, reject) => {
             Promise.all([super.get(), promise]).then(([result, item]) => {
                 return [result[super.key], item];
-            }).then(([array, item]) => {
+            }).then(async ([array, item]) => {
                 if (Array.isArray(array)) {
                     if (!array.includes(item)) {
                         array.push(item);
@@ -104,9 +98,8 @@ class ArrayStorage extends BrowserStorage {
                 } else {
                     throw new Error("stored object is not an array");
                 }
-                return [super.set(array), item];
-            }).then(([newArray, item]) => {
-                resolve([newArray, item]);
+                await super.set(array);
+                resolve([array, item]);
             }).catch((err) => {
                 reject(err);
             });
@@ -114,23 +107,21 @@ class ArrayStorage extends BrowserStorage {
     }
 
     /**
-        * @param {any} promise
-        * @returns {Promise<Array>}
-        * @memberof ArrayStorage
+        * @param {Promise<any>} promise
+        * @returns {Promise<[Array, any]>}
     */
     removeItem(promise) {
         return this.#queue.enqueue(new Promise((resolve, reject) => {
             Promise.all([super.get(), promise]).then(([result, item]) => {
                 return ([result[super.key], item]);
-            }).then(([array, item]) => {
+            }).then(async ([array, item]) => {
                 let index = array.indexOf(item);
                 if (index === -1) {
                     throw new Error("item not in array");
                 }
                 array.splice(index, 1);
-                return super.set(array);
-            }).then((newArray) => {
-                resolve(newArray);
+                await super.set(array);
+                resolve([array, item]);
             }).catch((err) => {
                 reject(err);
             });
@@ -147,13 +138,10 @@ class ArrayStorage extends BrowserStorage {
             Promise.all([super.get(), promise]).then(([result, item]) => {
                 return [result[super.key], item];
             }).then(([array, item]) => {
-                if (Array.isArray(array)) {
-                    return array.includes(item);
-                } else {
+                if (!Array.isArray(array)) {
                     throw new Error("stored object is not an array");
                 }
-            }).then((result) => {
-                resolve(result);
+                resolve(array.includes(item));
             }).catch((err) => {
                 reject(err);
             });
@@ -165,11 +153,10 @@ class ArrayStorage extends BrowserStorage {
             super.get().then((result) => {
                 return result[super.key];
             }).then((array) => {
-                if (Array.isArray(array)) {
-                    console.log(array);
-                } else {
+                if (!Array.isArray(array)) {
                     throw new Error("stored object is not an array");
                 }
+                console.log(array);
                 resolve(array);
             }).catch((err) => {
                 reject(err);
