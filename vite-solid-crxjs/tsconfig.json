@@ -12,5 +12,6 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
   },
 }

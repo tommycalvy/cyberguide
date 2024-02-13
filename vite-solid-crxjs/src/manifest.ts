@@ -20,13 +20,17 @@ export default defineManifest(async (env) => ({
     // semver is OK in "version_name"
     version_name: version,
     description: packageJson.description,
+    permissions: ['activeTab', 'scripting'],
     action: {
         default_title: 'CyberGuide',
-        default_popup: 'src/popup/index.html',
     },
     icons: {
         '16': 'src/icons/flame-16.png',
         '48': 'src/icons/hermit-48.png',
         '128': 'src/icons/hermit-128.png',
-    },
+    }, 
+    background: {
+        service_worker: 'src/background.ts',
+        type: 'module'
+    }
 }))

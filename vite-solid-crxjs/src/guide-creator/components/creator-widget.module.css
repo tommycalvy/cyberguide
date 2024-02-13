@@ -1,0 +1,54 @@
+.move { 
+    cursor: grab;
+    width: 100%;
+    background-color: #FFFFFFCC;
+    border: none;
+    &:hover { background-color: #F5F5F5CC; }
+    color: black;
+    font-weight: bold;
+    height: 4rem;
+    user-select: none;
+}
+
+.record { 
+    width: 5.5rem;
+    background-color: #FF0000CC;
+    cursor: pointer;
+    &:hover { background-color: #FF6666CC; }
+    color: black;
+    font-weight: bold;
+    height: 4rem;
+    user-select: none;
+}
+
+.close {
+    background-color: #FFFFFFCC;
+    width: 4rem;
+    border: 0.2rem solid #000000;
+    border-radius: 50%;
+    cursor: pointer;
+    &:hover { background-color: #F5F5F5CC; }
+    color: black;
+    font-weight: bold;
+    height: 4rem;
+    user-select: none;
+}
+
+.widget {
+    position: fixed;
+    top: 5rem;
+    right: 5rem;
+    z-index: 999999;
+    background-color: #00FFFFCC;
+    width: 6rem;
+    height: 18rem;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 1rem;
+    overflow: hidden;
+    border: 0.2rem solid #87CEEBCC;
+    border-radius: 3rem;
+    transition: opacity 75ms ease-out;
+}
