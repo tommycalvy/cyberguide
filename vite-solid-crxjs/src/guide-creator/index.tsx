@@ -1,4 +1,4 @@
-import CreatorWidget from "./components/creator-widget";
+import GuideCreator from "./guide-creator";
 import { render } from "solid-js/web";
 import styles from "./components/creator-widget.module.css?inline";
 console.log("Hello from GuideCreator.tsx");
@@ -12,4 +12,4 @@ sheet.replaceSync(styles);
 shadowRoot.adoptedStyleSheets = [sheet];
 document.body.append(shadowHost);
 
-render(() => <CreatorWidget/>, shadowRoot);
+render(() => <GuideCreator />, shadowRoot);

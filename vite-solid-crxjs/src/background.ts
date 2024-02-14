@@ -3,6 +3,26 @@ import { getCurrentTabId } from '../src/utils/tab';
 import guideCreatorScriptPath from '../src/guide-creator/index?script';
 console.log('background.ts');
 
+interface Cache {
+    count: number;
+    gcs?: string[];
+}
+
+
+const cache: Cache = { count: 0 };
+
+browser.storage.local.get().then((r) => {
+    Object.assign(cache, r);
+});
+
+browser.runtime.onConnect.addListener((port) => {
+    port.onMessage.addListener(async (msg) => {
+        console.log(port.name, ":" , msg);
+        if (port.name === 'guide-creator') {
+            cache.gcs.push(port.sender?.id);
+    });
+});
+
 browser.action.onClicked.addListener((tab) => {  
     console.log('browser.action.onClicked');
     if (tab.id) {
@@ -14,25 +34,6 @@ browser.action.onClicked.addListener((tab) => {
     } else {
         console.error('No tab.id found');
     }
-});
-
-
-browser.runtime.onConnect.addListener((port) => {
-    port.onMessage.addListener(async (msg) => {
-        console.log(port.name, ":" , msg);
-        if (port.name === 'popup') {
-            if (msg.type === 'ping') {
-                port.postMessage({ message: 'Hello from background.js' });
-            } else if (msg.type === 'execute-guide-creator') {
-                const tabId = await getCurrentTabId();
-                console.log('tabId:', tabId);
-                browser.scripting.executeScript({
-                    target: { tabId },
-                    files: [guideCreatorScriptPath],
-                });
-            }
-        }
-    });
 });
 
 
