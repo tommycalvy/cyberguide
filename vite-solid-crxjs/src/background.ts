@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import { Port, MessageListener } from '../src/utils/message-listener';
+import { Channel, MessageListener } from '../src/utils/message-listener';
 import gcScriptPath from '../src/guide-creator/index?script';
 console.log('background.ts');
 
@@ -26,52 +26,40 @@ function initCache(cache: Map<string, any>): void {
     }
 }
 
-let cache = await getCache().catch((err) => {
+let cache: Map<string, any> = new Map();
+getCache().then((c) => cache = c).catch((err) => {
     console.error(err);
-    const cache = new Map();
     initCache(cache);
-    return cache;
 });
 
-const ml = new MessageListener(true);
-const gcPort = new Port('gc', ml);
+const messageListener = new MessageListener();
+const gcc = new Channel('gc', messageListener);
 
-
-browser.runtime.onConnect.addListener((port) => {
-    port.onMessage.addListener(async (msg) => {
-        console.log(port.name, ":" , msg);
-        if (port.name === 'gc') {
-            if (msg.type === 'init') {
-                const tabId = port.sender?.tab?.id;
-                console.log('tabId:', tabId);
-                if (tabId) {
-                    port.postMessage({ type: 'init', state: 'sent state' });
-                }
-            }
-        }
-    });
+gcc.onMessage('init', (tabId, msg) => {
+    console.log('init:', tabId, msg);
+    gcc.postMessage(tabId, { type: 'init', message: 'sent state' });
 });
 
 browser.action.onClicked.addListener((tab) => {  
     console.log('browser.action.onClicked');
-    if (tab.id) {
-        console.log('tab.id:', tab.id);
-        if (cache.get('gcs').includes(tab.id)) {
-            console.log('tab.id already exists');
-            return;
-        } else {
-            browser.scripting.executeScript({
-                target: { tabId: tab.id },
-                files: [gcScriptPath],
-            });
-            cache.set('gcs', [...cache.get('gcs'), tab.id]);
-            browser.storage.local.set({ gcs: cache.get('gcs') }).catch((err) => {
-                console.error(browser.runtime.lastError);
-                console.error(err);
-            });
-        }
-    } else {
+    if (!tab.id) {
         console.error('No tab.id found');
+        return;
+    }
+    console.log('tab.id:', tab.id);
+    if (cache.get('gcs').includes(tab.id)) {
+        console.log('tab.id already exists');
+        gcc.postMessage(tab.id, { type: 'open-widget' });
+    } else {
+        browser.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: [gcScriptPath],
+        });
+        cache.set('gcs', [...cache.get('gcs'), tab.id]);
+        browser.storage.local.set({ gcs: cache.get('gcs') }).catch((err) => {
+            console.error(browser.runtime.lastError);
+            console.error(err);
+        });
     }
 });
 

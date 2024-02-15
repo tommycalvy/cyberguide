@@ -1,15 +1,20 @@
 import type { Component } from 'solid-js';
-import { createSignal, Show, createEffect } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import CreatorWidget from "./components/creator-widget";
 import browser from 'webextension-polyfill';
 
 const GuideCreator: Component = () => {
+    const [widgetOpen, setWidgetOpen] = createSignal(true);
+
     const bport = browser.runtime.connect({name: "gc"});
     bport.postMessage({type: "init"});
     bport.onMessage.addListener((msg) => {
-        console.log("Received message from background: ", msg);
+        if (msg.type === "init") {
+            console.log("Background.ts sent state: ", msg);
+        } else if (msg.type === "show-widget") {
+            setWidgetOpen(true);
+        }
     });
-    const [widgetOpen, setWidgetOpen] = createSignal(true);
 
     function closeWidget() {
         setWidgetOpen(false);
