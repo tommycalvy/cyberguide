@@ -14,13 +14,15 @@ interface Message {
     data?: any;
 }
 
-type Listener = (tabId: TabId, msg: Message) => void;
+type MsgListener = (tabId: TabId, msg: Message) => void;
+type DcdListener = (tabId: TabId) => void;
 
 type MsgType = string;
 
 interface MLChannel {
-    listeners: Map<MsgType, Listener>;
     ports: Map<TabId, MLPort>;
+    msgListeners: Map<MsgType, MsgListener>;
+    dcdListener: DcdListener | null;
 }
 
 type GPSuccess = (port: browser.Runtime.Port) => void;
@@ -71,7 +73,7 @@ class MessageListener {
                     return;
                 }
                 console.log(channelName, ": ", msg.type);
-                const listener = channel.listeners.get(msg.type);
+                const listener = channel.msgListeners.get(msg.type);
                 if (listener) {
                     listener(tabId, msg);
                 } else {
@@ -86,6 +88,11 @@ class MessageListener {
                 } else {
                     f(new Error(`No port with tabId: ${tabId} for channel: ${channelName}`));
                 }
+                if (channel.dcdListener) {
+                    channel.dcdListener(tabId);
+                } else {
+                    f(new Error(`No disconnect listener for channel: ${channelName}`));
+                }
             });
         });
     }
@@ -94,8 +101,9 @@ class MessageListener {
 
     addChannel(channelName: string) {
         let c: MLChannel = {
-            listeners: new Map(),
             ports: new Map(),
+            msgListeners: new Map(),
+            dcdListener: null,
         };
         this.#channels.set(channelName, c);
     }
@@ -121,10 +129,19 @@ class MessageListener {
         }
     }
 
-    addMsgListener(channelName: string, msgType: string, listener: Listener, f: Failure) {
+    addMsgListener(channelName: string, msgType: string, listener: MsgListener, f: Failure) {
         const c = this.#channels.get(channelName);
         if (c) {
-            c.listeners.set(msgType, listener);
+            c.msgListeners.set(msgType, listener);
+        } else {
+            f(new Error(`No port with channel: ${channelName}`));
+        }
+    }
+
+    addDcdListener(channelName: string, listener: DcdListener, f: Failure) {
+        const c = this.#channels.get(channelName);
+        if (c) {
+            c.dcdListener = listener;
         } else {
             f(new Error(`No port with channel: ${channelName}`));
         }
@@ -142,7 +159,7 @@ class Channel {
         this.#msgListener.addChannel(this.#channelName);
     }
 
-    onMessage(msgType: string, listener: Listener) {
+    onMessage(msgType: string, listener: MsgListener) {
         this.#msgListener.addMsgListener(this.#channelName, msgType, listener, (err) => {
             console.error(err);
         });
@@ -152,6 +169,12 @@ class Channel {
         this.#msgListener.getPort(this.#channelName, tabId, (port) => {
             port.postMessage(msg);
         }, (err) => {
+            console.error(err);
+        });
+    }
+
+    onDisconnect(listener: DcdListener) {
+        this.#msgListener.addDcdListener(this.#channelName, listener, (err) => {
             console.error(err);
         });
     }

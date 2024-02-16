@@ -3,17 +3,13 @@ import { Channel, MessageListener } from '../src/utils/message-listener';
 import gcScriptPath from '../src/guide-creator/index?script';
 console.log('background.ts');
 
-function getCache(): Promise<Map<string, any>> {
-    return new Promise((resolve, reject) => {
-        browser.storage.local.get().then((r) => {
-            const cache = new Map(Object.entries(r)); 
-            initCache(cache);
-            resolve(cache);
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
+// Clearing storage for development purposes
+browser.storage.local.clear().then(() => {
+    console.log('Storage cleared');
+}).catch((err) => {
+    console.error(browser.runtime.lastError);
+    console.error(err);
+});
 
 function initCache(cache: Map<string, any>): void {
     if (!cache.has('gcs')) {
@@ -27,13 +23,30 @@ function initCache(cache: Map<string, any>): void {
 }
 
 let cache: Map<string, any> = new Map();
-getCache().then((c) => cache = c).catch((err) => {
+browser.storage.local.get().then((r) => {
+    cache = new Map(Object.entries(r)); 
+    initCache(cache);
+}).catch((err) => {
     console.error(err);
     initCache(cache);
 });
 
 const messageListener = new MessageListener();
 const gcc = new Channel('gc', messageListener);
+
+gcc.onDisconnect((tabId) => {
+    console.log('gcc onDisconnect, tabId:', tabId);
+    const gcs = cache.get('gcs');
+    const index = gcs.indexOf(tabId);
+    if (index > -1) {
+        gcs.splice(index, 1);
+        cache.set('gcs', gcs);
+        browser.storage.local.set({ gcs: gcs }).catch((err) => {
+            console.error(browser.runtime.lastError);
+            console.error(err);
+        });
+    }
+});
 
 gcc.onMessage('init', (tabId, msg) => {
     console.log('init:', tabId, msg);

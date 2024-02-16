@@ -20,7 +20,7 @@ export default defineManifest(async (env) => ({
     // semver is OK in "version_name"
     version_name: version,
     description: packageJson.description,
-    permissions: ['activeTab', 'scripting'],
+    permissions: ['activeTab', 'scripting', 'storage'],
     action: {
         default_title: 'CyberGuide',
     },

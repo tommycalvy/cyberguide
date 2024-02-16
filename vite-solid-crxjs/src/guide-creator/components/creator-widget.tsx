@@ -1,17 +1,32 @@
-import type { Component } from 'solid-js';
-import { JSX } from 'solid-js';
 import styles from './creator-widget.module.css';
+import { draggable, type DraggableOptions } from '../../utils/draggable';
 
 interface CreatorWidgetProps {
     closeWidget: () => void;
+    recording: () => boolean;
+    startRecording: () => void;
+    stopRecording: () => void;
 }
 
-function CreatorWidget(props: CreatorWidgetProps): JSX.Element {
 
+function CreatorWidget(props: CreatorWidgetProps) {
+
+    const draggableOptions: DraggableOptions = {
+        handle: styles.move,
+        pos: {
+            x: 100,
+            y: 100,
+        }
+    };
     return (
-        <div class={styles.widget}>
+        <div class={styles.widget} use:draggable={draggableOptions}>
             <button class={styles.move}>M</button>
-            <button class={styles.record}>Record</button>
+            <button 
+                class={styles.record}
+                onClick={() => props.recording() ? props.stopRecording() : props.startRecording()}
+            >
+                {props.recording() ? "Stop" : "Record"}
+            </button>
             <button 
                 class={styles.close}
                 onClick={props.closeWidget}
