@@ -1,79 +1,63 @@
-import { createSignal, createEffect, Show } from 'solid-js';
-import CreatorWidget from "./components/creator-widget";
+import { createSignal, createEffect } from 'solid-js';
 import browser from 'webextension-polyfill';
 import RecordingCountdown from "./components/recording-countdown";
 
-
-function recordClick(e: PointerEvent) {
+function recordClick(e: PointerEvent, bport: browser.Runtime.Port) {
     if (e.target instanceof Element === false) {
-        console.log('not an Element');
+        console.error(new Error('not an Element'));
         return;
     }
     e.target.addEventListener('pointerup', function logElement(e) {
         if (e.target instanceof Element === false) {
-            console.log('not an Element');
+            console.error(new Error('not an Element'));
             return;
         }
         console.log(e.target);
         let url = window.location.href;
         console.log(url);
         if (url === null) {
-            throw new Error('url is null');
+            console.error(new Error('url is null'));
         }
-        let recordedElt = {
-            url: url,
-            elt: e.target
-        };
-        recordedElts.pushUnique(Promise.resolve(recordedElt));
+        const action = { type: 'click', url: url, elt: e.target };
+        bport.postMessage({type: "action", action });
         e.target.removeEventListener('pointerup', logElement);
     });
 }
 
 
 function GuideCreator() {
-    const [widgetOpen, setWidgetOpen] = createSignal(true);
     const [recording, setRecording] = createSignal(false);
-        
+
     const bport = browser.runtime.connect({name: "gc"});
     bport.postMessage({type: "init"});
     bport.onMessage.addListener((msg) => {
-        if (msg.type === "init") {
-            console.log("Background.ts sent state: ", msg);
-        } else if (msg.type === "open-widget") {
-            setWidgetOpen(true);
+        if (msg.type === "record") {
+            setRecording(true);
+        } else if (msg.type === "stop") {
+            setRecording(false);
         }
     });
 
-    function closeWidget() {
-        setWidgetOpen(false);
-    }
-
-    function stopRecording() {
-        setRecording(false);
-    }
-
-    function startRecording() {
-        setRecording(true);
-    }
-
     createEffect(() => {
+        // Define a persistent function that can be added or removed
+        const listener = (e: PointerEvent) => recordClick(e, bport);
+
         if (recording()) {
-            document.addEventListener('pointerdown', recordClick);
+            // Add the listener
+            document.addEventListener('pointerdown', listener);
+        } else {
+            // Remove the listener
+            document.removeEventListener('pointerdown', listener);
         }
+
+        // Cleanup function to ensure no leaks when the component unmounts or effect re-runs
+        return () => {
+            document.removeEventListener('pointerdown', listener);
+        };
     });
         
     return (
-        <>
-            <Show when={widgetOpen()}>
-                <CreatorWidget
-                    closeWidget={closeWidget}
-                    recording={recording}
-                    startRecording={startRecording}
-                    stopRecording={stopRecording}
-                />
-            </Show>
-            <RecordingCountdown recording={recording}/>
-        </>
+        <RecordingCountdown recording={recording}/>
     );
 }
 

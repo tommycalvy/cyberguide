@@ -20,6 +20,7 @@
     "vite-plugin-solid": "^2.8.2"
   },
   "dependencies": {
+    "@types/chrome": "^0.0.260",
     "solid-js": "^1.8.11",
     "webextension-polyfill": "^0.10.0"
   }
