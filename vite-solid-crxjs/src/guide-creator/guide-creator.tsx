@@ -1,8 +1,8 @@
 import { createSignal, createEffect } from 'solid-js';
-import browser from 'webextension-polyfill';
+import Port from '../utils/message-producer';
 import RecordingCountdown from "./components/recording-countdown";
 
-function recordClick(e: PointerEvent, bport: browser.Runtime.Port) {
+function recordClick(e: PointerEvent, bport: Port) {
     if (e.target instanceof Element === false) {
         console.error(new Error('not an Element'));
         return;
@@ -19,7 +19,7 @@ function recordClick(e: PointerEvent, bport: browser.Runtime.Port) {
             console.error(new Error('url is null'));
         }
         const action = { type: 'click', url: url, elt: e.target };
-        bport.postMessage({type: "action", action });
+        bport.send({type: "action", data: action });
         e.target.removeEventListener('pointerup', logElement);
     });
 }
@@ -28,14 +28,12 @@ function recordClick(e: PointerEvent, bport: browser.Runtime.Port) {
 function GuideCreator() {
     const [recording, setRecording] = createSignal(false);
 
-    const bport = browser.runtime.connect({name: "gc"});
-    bport.postMessage({type: "init"});
-    bport.onMessage.addListener((msg) => {
-        if (msg.type === "record") {
-            setRecording(true);
-        } else if (msg.type === "stop") {
-            setRecording(false);
-        }
+    const bport = new Port('gc');
+    bport.setListener('start-recording', () => {
+        setRecording(true);
+    });
+    bport.setListener('stop-recording', () => {
+        setRecording(false);
     });
 
     createEffect(() => {

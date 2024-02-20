@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from 'solid-js';
 import styles from './sidebar.module.css';
-import browser from 'webextension-polyfill';
+import Port from '../utils/message-producer';
 
 interface Action {
     type: string;
@@ -8,56 +8,51 @@ interface Action {
     elt: Element;
 };
 
+
 function Sidebar() {
     const [recording, setRecording] = createSignal(false);
     const [actions, setActions] = createSignal<Action[]>([]);
     console.log('sidebar');
-  
-    const bport = browser.runtime.connect({ name: 'sb' });
-    bport.onMessage.addListener((msg) => { 
-        console.log('Sidebar received message:', msg);
-        if (msg.type === 'action') {
-            console.log('Sidebar received action:', msg.action);
-            setActions([...actions(), msg.action]);
-        }
+    
+    const bport = new Port('sb');
+    bport.setListener('action', (msg) => {
+        setActions([...actions(), msg.data]);
+    });
+    bport.setListener('start-recording', () => {
+        setRecording(true);
+    });
+    bport.setListener('stop-recording', () => {
+        setRecording(false);
     });
 
     function record() {
-        chrome.permissions.request({
-            permissions: ['tabs'],
-            origins: ['https://www.google.com/']
-          }, (granted) => {
-            // The callback argument will be true if the user granted the permissions.
-            if (granted) {
-                setRecording(true);
-                bport.postMessage({ type: 'record' });
-            } else {
-              doSomethingElse();
-            }
-      });
+        setRecording(true);
+        bport.send({ type: 'start-recording' });
     }
 
     function stopRecording() {
         setRecording(false);
-        bport.postMessage({ type: 'stop' });
+        bport.send({ type: 'stop-recording' });
     }
 
     return (
         <div class={styles.container}>
-        <h1 class={styles.title}>Cyber Guide</h1>
-        <Show when={recording()} fallback={
-            <button onClick={record}>Record</button>
-        }>
-            <button onClick={stopRecording}>Stop Recording</button>
-        </Show>
-        <For each={actions()}>{(action, i) => 
-            <div>
-                <p>{i()}</p> 
-                <p>{action.type}</p>
-                <p>{action.url}</p>
-                <p>{action.elt}</p>
+            <h1 class={styles.title}>Cyber Guide</h1>
+            <Show when={recording()} fallback={
+                <button onClick={record}>Record</button>
+            }>
+                <button onClick={stopRecording}>Stop Recording</button>
+            </Show>
+            <div class={styles.actions}>
+                <For each={actions()}>{(action, i) => 
+                    <div class={styles.action}>
+                        <p>{`${i()})`}</p> 
+                        <p>{action.type}</p>
+                        <p class={styles.action__url}>{action.url}</p>
+                        <p>{action.elt}</p>
+                    </div>
+                }</For>
             </div>
-        }</For>
         </div>
     );
 }

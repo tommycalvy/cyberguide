@@ -3,28 +3,88 @@ import { Channel, MessageListener } from '../src/utils/message-listener';
 import gcScriptPath from '../src/guide-creator/index?script';
 console.log('background.ts');
 
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error) => console.error(error));
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+
+const sidePanels = new Set<number>();
+browser.action.onClicked.addListener(async (tab) => {
+    console.log('browser.action.onClicked');
+    if (!tab.id) {
+        console.error('No tab.id found');
+        return;
+    }
+    browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: [gcScriptPath],
+    });
+    sidePanels.add(tab.id);
+    chrome.sidePanel.setOptions({
+        tabId: tab.id,
+        path: 'src/sidebar/index.html',
+        enabled: true,
+    });
+    await chrome.sidePanel.open({ tabId: tab.id });
+});
+/*
+browser.tabs.onUpdated.addListener(async (tabId, tab) => {
+    console.log('tabs.onUpdated:', tab);
+    if (sidePanels.has(tabId)) {
+        await chrome.sidePanel.setOptions({
+            tabId: tabId,
+            path: 'src/sidebar/index.html',
+            enabled: true,
+        });
+    } else {
+        await chrome.sidePanel.setOptions({
+            tabId: tabId,
+            path: 'src/sidebar/index.html',
+            enabled: false,
+        });
+    }
+});
+*/
+
+const messageListener = new MessageListener();
+const gcChannel = new Channel('gc', messageListener);
+const sbChannel = new Channel('sb', messageListener);
+
+sbChannel.onMessage('start-recording', () => {
+    gcChannel.sendAll({ type: 'start-recording' });
+    sbChannel.sendAll({ type: 'start-recording' });
+});
+
+sbChannel.onMessage('stop-recording', () => {
+    gcChannel.sendAll({ type: 'stop-recording' });
+    sbChannel.sendAll({ type: 'stop-recording' });
+});
+
+gcChannel.onMessage('action', (msg) => {
+    sbChannel.sendAll({ type: 'action', data: msg.data });
+});
 
 
-let sbPort: browser.Runtime.Port | null = null;
-let gcPort: browser.Runtime.Port | null = null;
+
+
+/*
+let sbPorts: Map<string, browser.Runtime.Port> = new Map();
+let gcPorts: Map<string, browser.Runtime.Port> = new Map();
 browser.runtime.onConnect.addListener((port) => {
-    if (port.name === 'sb') {
-        sbPort = port;
-        console.log('sidebar connected');
+    if (port.name.startsWith('sb')) {
+        sbPorts.set(port.name, port);
+        console.log(port.name, 'sidebar connected');
         port.onDisconnect.addListener(() => {
-            console.log('sidebar disconnected');
+            sbPorts.delete(port.name);
+            console.log(port.name, 'sidebar disconnected');
         });
         port.onMessage.addListener((msg) => {
             console.log('sidebar message:', msg);
             if (msg.type === 'record') {
-                if (gcPort) {
+                if () {
+                    port.postMessage({ type: 'record' });
                     gcPort.postMessage({ type: 'record' });
                 }
             } else if (msg.type === 'stop') {
                 if (gcPort) {
+                    port.postMessage({ type: 'stop' });
                     gcPort.postMessage({ type: 'stop' });
                 }
             }
@@ -45,7 +105,6 @@ browser.runtime.onConnect.addListener((port) => {
         });
     }
 });
-/*
 // Clearing storage for development purposes
 browser.storage.local.clear().then(() => {
     console.log('Storage cleared');

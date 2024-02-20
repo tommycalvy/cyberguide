@@ -20,7 +20,9 @@ export default defineManifest(async (env) => ({
     // semver is OK in "version_name"
     version_name: version,
     description: packageJson.description,
-    permissions: ['activeTab', 'scripting', 'storage', 'sidePanel'],
+    permissions: ['storage', 'sidePanel', 'activeTab', 'scripting'],
+    optional_permissions: ['tabs'],
+    optional_host_permissions: ['https://*/*'],
     action: {
         default_title: 'CyberGuide',
     },
@@ -33,7 +35,4 @@ export default defineManifest(async (env) => ({
         service_worker: 'src/background.ts',
         type: 'module'
     },
-    side_panel: {
-        default_path: 'src/sidebar/index.html',
-    } 
 }))
