@@ -36,22 +36,14 @@ function GuideCreator() {
         setRecording(false);
     });
 
+    const clickListener = (e: PointerEvent) => recordClick(e, bport);
+
     createEffect(() => {
-        // Define a persistent function that can be added or removed
-        const listener = (e: PointerEvent) => recordClick(e, bport);
-
         if (recording()) {
-            // Add the listener
-            document.addEventListener('pointerdown', listener);
+            document.addEventListener('pointerdown', clickListener);
         } else {
-            // Remove the listener
-            document.removeEventListener('pointerdown', listener);
+            document.removeEventListener('pointerdown', clickListener);
         }
-
-        // Cleanup function to ensure no leaks when the component unmounts or effect re-runs
-        return () => {
-            document.removeEventListener('pointerdown', listener);
-        };
     });
         
     return (

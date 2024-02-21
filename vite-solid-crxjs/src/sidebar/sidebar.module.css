@@ -19,6 +19,8 @@
     flex-wrap: nowrap;
     gap: 1rem;
     padding: 1rem;
+    max-height: 25rem;
+    overflow-y: auto;
 }
 
 .action {
@@ -35,4 +37,24 @@
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
+}
+
+.preview__container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    width: 100%;
+    background-color: #37383d;
+    border-radius: 0.5rem;
+}
+
+.preview__button {
+    padding: 0.5rem 1rem;
+    background-color: #0b0f1f;
+    color: #fff;
+    border: 1px solid #fff;
+    border-radius: 0.5rem;
+    cursor: pointer;
 }

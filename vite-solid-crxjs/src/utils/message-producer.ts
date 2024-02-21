@@ -21,7 +21,7 @@ class Port {
     }
 
     generateNewName(): string {
-        return this.#channel + '-' + this.randomString(10);
+        return this.#channel + '-' + this.randomString(8);
     }
 
     randomString(len: number) {
