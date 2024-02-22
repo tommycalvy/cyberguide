@@ -1,0 +1,23 @@
+@keyframes fireRing {
+    from {
+        width: 0;
+        height: 0;
+        opacity: 1;
+        border-width: 0.3rem;
+    }
+    to {
+        width: 5rem;
+        height: 5rem;
+        opacity: 0;
+        border-width: 0px;
+    }
+}
+
+.ring {
+    position: fixed;
+    z-index: 999999;
+    border-radius: 50%;
+    border: 0.5rem solid orange;
+    animation: fireRing 0.7s ease-out forwards;
+    pointer-events: none; /* Ignore pointer events */
+}

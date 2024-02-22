@@ -1,6 +1,7 @@
 import { createSignal, createEffect } from 'solid-js';
 import Port from '../utils/message-producer';
 import RecordingCountdown from "./components/recording-countdown";
+import FireRingClick from "./components/fire-ring-click";
 
 function recordClick(e: PointerEvent, bport: Port) {
     if (e.target instanceof Element === false) {
@@ -47,7 +48,10 @@ function GuideCreator() {
     });
         
     return (
-        <RecordingCountdown recording={recording}/>
+        <>
+            <RecordingCountdown recording={recording}/>
+            <FireRingClick active={recording}/>
+        </>
     );
 }
 

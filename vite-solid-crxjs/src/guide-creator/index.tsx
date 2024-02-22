@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import creatorWidgetSyles from "./components/creator-widget.module.css?inline";
 import modernNormalizeStyles from "../styles/modern-normalize.css?inline";
 import recordingCountdownStyles from "./components/recording-countdown.module.css?inline";
+import fireRingClickStyles from "./components/fire-ring-click.module.css?inline";
 
 console.log("Hello from GuideCreator.tsx");
 
@@ -19,10 +20,14 @@ creatorWidgetSheet.replaceSync(creatorWidgetSyles);
 const recordingCountdownSheet = new CSSStyleSheet();
 recordingCountdownSheet.replaceSync(recordingCountdownStyles);
 
+const fireRingClickSheet = new CSSStyleSheet();
+fireRingClickSheet.replaceSync(fireRingClickStyles);
+
 shadowRoot.adoptedStyleSheets = [
     modernNormalizeSheet,
     creatorWidgetSheet,
     recordingCountdownSheet,
+    fireRingClickSheet,
 ];
 document.body.append(shadowHost);
 
