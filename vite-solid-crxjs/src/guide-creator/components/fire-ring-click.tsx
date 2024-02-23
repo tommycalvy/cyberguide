@@ -31,8 +31,8 @@ function FireRingClick(props: FireRingClickProps) {
     return (
         <For each={ clicks() }>{ position => 
             <div class={styles.ring} style={{ 
-                top: `${position.y - 40}px`, 
-                left: `${position.x - 40}px`,
+                top: `${position.y}px`, 
+                left: `${position.x}px`,
             }}></div>
         }</For>
     );

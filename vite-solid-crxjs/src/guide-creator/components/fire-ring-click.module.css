@@ -1,15 +1,11 @@
 @keyframes fireRing {
     from {
-        width: 0;
-        height: 0;
+        transform: scale(0);
         opacity: 1;
-        border-width: 0.3rem;
     }
     to {
-        width: 5rem;
-        height: 5rem;
+        transform: scale(1);
         opacity: 0;
-        border-width: 0px;
     }
 }
 
@@ -17,7 +13,12 @@
     position: fixed;
     z-index: 999999;
     border-radius: 50%;
-    border: 0.5rem solid orange;
-    animation: fireRing 0.7s ease-out forwards;
+    border: 12px solid orange;
+    width: 64px;
+    height: 64px;
+    animation: fireRing 0.5s ease-out forwards;
     pointer-events: none; /* Ignore pointer events */
+    transform: scale(0);
+    margin-left: -32px;
+    margin-top: -32px;
 }
