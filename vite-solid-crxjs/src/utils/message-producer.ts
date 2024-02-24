@@ -4,24 +4,26 @@ import { Message } from './types';
 class Port {
 
     #channel: string;
+    #randStrLen: number;
     #name: string;
     #bport: browser.Runtime.Port | null;
     #listeners: Map<string, (msg: Message) => void>;
 
-    constructor(channel: string) {
+    constructor(channel: string, randStrLen: number = 11) {
         // If channel is not 2 characters long, throw an error
         if (channel.length !== 2) {
             throw new Error('Channel must be 2 characters long');
         }
         this.#channel = channel;
-        this.#name = this.#channel + '-' + this.randomString(10);
+        this.#randStrLen = randStrLen;
+        this.#name = this.generateNewName();
         this.#bport = null;
         this.#listeners = new Map();
         this.connect(); 
     }
 
     generateNewName(): string {
-        return this.#channel + '-' + this.randomString(8);
+        return this.#channel + '-' + this.randomString(this.#randStrLen);
     }
 
     randomString(len: number) {

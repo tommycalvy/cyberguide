@@ -1,19 +1,14 @@
 import { createSignal, For, Show } from 'solid-js';
 import styles from './sidebar.module.css';
 import Port from '../utils/message-producer';
-
-interface Action {
-    type: string;
-    url: string;
-    elt: Element;
-};
-
+import { Action } from '../utils/types';
 
 function Sidebar() {
     const [recording, setRecording] = createSignal(false);
     const [actions, setActions] = createSignal<Action[]>([]);
-    let lastActionElement: HTMLDivElement | ((el: HTMLDivElement) => void) | undefined = undefined;
+    const [previewing, setPreviewing] = createSignal(false);
 
+    let lastActionElement: HTMLDivElement | ((el: HTMLDivElement) => void) | undefined = undefined;
     console.log('sidebar');
     
     const bport = new Port('sb');
@@ -40,6 +35,16 @@ function Sidebar() {
         bport.send({ type: 'stop-recording' });
     }
 
+    function startPreview() {
+        setPreviewing(true);
+        bport.send({ type: 'start-preview' });
+    }
+
+    function stopPreview() {
+        setPreviewing(false);
+        bport.send({ type: 'stop-preview' });
+    }
+
     return (
         <div class={styles.container}>
             <h1 class={styles.title}>Cyber Guide</h1>
@@ -59,7 +64,21 @@ function Sidebar() {
             </div>
             <Show when={actions().length > 0 && !recording()}>
                 <div class={styles.preview__container}>
-                    <button class={styles.preview__button} formaction={actions()[0].url}>Preview Guide</button>
+                    <Show when={previewing()} fallback={
+                        <button 
+                            class={styles.preview__button}
+                            onClick={startPreview}
+                        >
+                            Start Preview
+                        </button>
+                    }>
+                        <button 
+                            class={styles.preview__button}
+                            onClick={stopPreview}
+                        >
+                            Stop Preview
+                        </button>
+                    </Show>
                 </div>
             </Show>
         </div>

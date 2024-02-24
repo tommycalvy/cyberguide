@@ -1,22 +1,21 @@
 import browser from "webextension-polyfill";
 import type { Message } from "./types";
 
+type MsgListener = (msg: Message, port: browser.Runtime.Port) => void;
+type PortListener = (port: browser.Runtime.Port) => void;
+type Failure = (err: Error) => void;
+
 interface MPort {
     port: browser.Runtime.Port;
     name: string;
 }
 
-type MsgListener = (msg: Message, port: browser.Runtime.Port) => void;
-type DcdListener = (port: browser.Runtime.Port) => void;
-
 interface MChannel {
     ports: Map<string, MPort>;
     msgListeners: Map<string, MsgListener>;
-    dcdListener: DcdListener | null;
+    dcdListener: PortListener | null;
+    cntListener: PortListener | null;
 }
-
-type GPSuccess = (port: browser.Runtime.Port) => void;
-type Failure = (err: Error) => void;
 
 /** Class that creates a runtime.onConnect listener and returns the ports */
 class MessageListener {
@@ -42,13 +41,19 @@ class MessageListener {
                 console.warn(`Port with name: ${portName} already exists`);
                 port.disconnect();
                 return;
-            } else {
-                const mport: MPort = {
-                    port: port,
-                    name: portName,
-                };
-                channel.ports.set(portName, mport);
             }
+            const mport: MPort = {
+                port: port,
+                name: portName,
+            };
+            channel.ports.set(portName, mport);
+            const cntListener = channel.cntListener;
+            if (cntListener) {
+                cntListener(port);
+            } else {
+                console.warn(`No connect listener for channel: ${channelName}`);
+            }
+
             port.onMessage.addListener((msg, port) => {
                 if (!msg.type) {
                     console.warn(`No msg type from port: ${port.name}`);
@@ -62,6 +67,7 @@ class MessageListener {
                     console.warn(`No listener for msg type: ${msg.type} in channel: ${channelName}`);
                 }
             });
+
             port.onDisconnect.addListener((port) => {
                 console.log(portName, "disconnected");
                 channel.ports.delete(port.name);
@@ -86,7 +92,7 @@ class MessageListener {
     }
 
 
-    getPort(portName: string, success: GPSuccess, f: Failure): void {
+    getPort(portName: string, success: PortListener, f: Failure): void {
         const channelName = portName.substring(0, 2);
         const c = this.#channels.get(channelName);
         if (!c) {
@@ -114,10 +120,19 @@ class MessageListener {
         }
     }
 
-    setDcdListener(channelName: string, listener: DcdListener, f: Failure) {
+    setDcdListener(channelName: string, listener: PortListener, f: Failure) {
         const c = this.#channels.get(channelName);
         if (c) {
             c.dcdListener = listener;
+        } else {
+            f(new Error(`No channel with name: ${channelName}`));
+        }
+    }
+
+    setCntListener(channelName: string, listener: PortListener, f: Failure) {
+        const c = this.#channels.get(channelName);
+        if (c) {
+            c.cntListener = listener;
         } else {
             f(new Error(`No channel with name: ${channelName}`));
         }
@@ -160,8 +175,14 @@ class Channel {
         });
     }
 
-    onDisconnect(listener: DcdListener) {
+    onDisconnect(listener: PortListener) {
         this.#msgListener.setDcdListener(this.#channelName, listener, (err) => {
+            console.error(err);
+        });
+    }
+
+    onConnect(listener: PortListener) {
+        this.#msgListener.setCntListener(this.#channelName, listener, (err) => {
             console.error(err);
         });
     }

@@ -1,22 +1,44 @@
 import browser from 'webextension-polyfill';
 import { Channel, MessageListener } from '../src/utils/message-listener';
 import gcScriptPath from '../src/guide-creator/index?script';
+import { Action } from '../src/utils/types';
+import { createStore } from 'solid-js/store';
+
 console.log('background.ts');
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+interface GCState {
+    recording: boolean;
+    previewing: boolean;
+}
 
-const sidePanels = new Set<number>();
+interface GCInstance {
+    portName: string;
+    tabId: number;
+    connected: boolean;
+    state: GCState;
+}
+
+const sbTabId: Map<string, number> = new Map();
+const tabIdGC: Map<number, GCInstance> = new Map();
+const actions: Action[] = []; 
+let recording = false;
+
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+let lastActiveTabId: number | null = null;
+let lastActiveTabIdAssignmentsLeft = 0;
+
 browser.action.onClicked.addListener(async (tab) => {
     console.log('browser.action.onClicked');
     if (!tab.id) {
         console.error('No tab.id found');
         return;
     }
+    lastActiveTabId = tab.id;
+    lastActiveTabIdAssignmentsLeft = 1;
     browser.scripting.executeScript({
         target: { tabId: tab.id },
         files: [gcScriptPath],
     });
-    sidePanels.add(tab.id);
     chrome.sidePanel.setOptions({
         tabId: tab.id,
         path: 'src/sidebar/index.html',
@@ -24,46 +46,116 @@ browser.action.onClicked.addListener(async (tab) => {
     });
     await chrome.sidePanel.open({ tabId: tab.id });
 });
-/*
-browser.tabs.onUpdated.addListener(async (tabId, tab) => {
-    console.log('tabs.onUpdated:', tab);
-    if (sidePanels.has(tabId)) {
-        await chrome.sidePanel.setOptions({
-            tabId: tabId,
-            path: 'src/sidebar/index.html',
-            enabled: true,
-        });
-    } else {
-        await chrome.sidePanel.setOptions({
-            tabId: tabId,
-            path: 'src/sidebar/index.html',
-            enabled: false,
-        });
-    }
-});
-*/
 
 const messageListener = new MessageListener();
 const gcChannel = new Channel('gc', messageListener);
 const sbChannel = new Channel('sb', messageListener);
 
+sbChannel.onConnect((port) => {
+    if (lastActiveTabIdAssignmentsLeft > 0 && lastActiveTabId !== null) {
+        sbTabId.set(port.name, lastActiveTabId);
+        lastActiveTabIdAssignmentsLeft--;
+    }
+});
+
+gcChannel.onConnect((port) => {
+    const tabId = port.sender?.tab?.id;
+    if (!tabId) {
+        console.error('No tabId found for port:', port.name);
+        return;
+    }
+    const gc = tabIdGC.get(tabId);
+    if (!gc) {
+        tabIdGC.set(tabId, {
+            portName: port.name,
+            tabId: tabId,
+            connected: true,
+            state: {
+                recording: false,
+                previewing: false,
+            },
+        });
+    }
+    if (lastActiveTabIdAssignmentsLeft > 0 && lastActiveTabId !== null) {
+        lastActiveTabIdAssignmentsLeft--;
+    }
+});
+
+gcChannel.onDisconnect((port) => {
+    const tabId = port.sender?.tab?.id;
+    if (!tabId) {
+        console.error('No tabId found for port:', port.name);
+        return;
+    }
+    const gc = tabIdGC.get(tabId);
+    if (!gc) {
+        console.error('No gcPortName found for port:', port.name);
+        return;
+    }
+    gc.connected = false;
+});
+
 sbChannel.onMessage('start-recording', () => {
+    recording = true;
     gcChannel.sendAll({ type: 'start-recording' });
     sbChannel.sendAll({ type: 'start-recording' });
 });
 
 sbChannel.onMessage('stop-recording', () => {
+    recording = false;
     gcChannel.sendAll({ type: 'stop-recording' });
     sbChannel.sendAll({ type: 'stop-recording' });
 });
 
 gcChannel.onMessage('action', (msg) => {
+    actions.push(msg.data);
     sbChannel.sendAll({ type: 'action', data: msg.data });
 });
 
+sbChannel.onMessage('start-preview', (_, port) => {
+    const tabId = sbTabId.get(port.name);
+    if (!tabId) {
+        console.error('No tabId found for port:', port.name);
+        return;
+    } 
+    browser.tabs.update(tabId, { active: true, url: actions[0].url });
+    const gc = tabIdGC.get(tabId);
+    if (!gc) {
+        console.error('No gcPortName found for tabId:', tabId);
+        return;
+    }
+    gcChannel.send(gc.portName, { type: 'start-preview' });
+});
 
+sbChannel.onMessage('stop-preview', (_, port) => {
+    const tabId = sbTabId.get(port.name);
+    if (!tabId) {
+        console.error('No tabId found for port:', port.name);
+        return;
+    } 
+    const gc = tabIdGC.get(tabId);
+    if (!gc) {
+        console.error('No gcPortName found for tabId:', tabId);
+        return;
+    }
+    gcChannel.send(gc.portName, { type: 'stop-preview' });
+});
 
-
+browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'complete') {
+        const gc = tabIdGC.get(tabId);
+        if (!gc) {
+            console.error('No gcPortName found for tabId:', tabId);
+            return;
+        }
+        if (!gc.connected) {
+            browser.scripting.executeScript({
+                target: { tabId: tabId },
+                files: [gcScriptPath],
+            });
+        }
+    }
+});
 /*
 let sbPorts: Map<string, browser.Runtime.Port> = new Map();
 let gcPorts: Map<string, browser.Runtime.Port> = new Map();

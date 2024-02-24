@@ -3,3 +3,9 @@ export interface Message {
     message?: string;
     data?: any;
 }
+
+export interface Action {
+    type: string;
+    url: string;
+    elt: Element;
+};

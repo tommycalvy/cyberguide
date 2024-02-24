@@ -4,6 +4,7 @@ import creatorWidgetSyles from "./components/creator-widget.module.css?inline";
 import modernNormalizeStyles from "../styles/modern-normalize.css?inline";
 import recordingCountdownStyles from "./components/recording-countdown.module.css?inline";
 import fireRingClickStyles from "./components/fire-ring-click.module.css?inline";
+import previewGuideStyles from "./components/preview-guide.module.css?inline";
 
 console.log("Hello from GuideCreator.tsx");
 
@@ -23,11 +24,15 @@ recordingCountdownSheet.replaceSync(recordingCountdownStyles);
 const fireRingClickSheet = new CSSStyleSheet();
 fireRingClickSheet.replaceSync(fireRingClickStyles);
 
+const previewGuideSheet = new CSSStyleSheet();
+previewGuideSheet.replaceSync(previewGuideStyles);
+
 shadowRoot.adoptedStyleSheets = [
     modernNormalizeSheet,
     creatorWidgetSheet,
     recordingCountdownSheet,
     fireRingClickSheet,
+    previewGuideSheet,
 ];
 document.body.append(shadowHost);
 

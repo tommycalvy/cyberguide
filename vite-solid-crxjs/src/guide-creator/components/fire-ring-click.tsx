@@ -1,16 +1,12 @@
-import { createSignal, createEffect, For } from "solid-js";
+import { createSignal, onCleanup, For } from "solid-js";
 import styles from "./fire-ring-click.module.css";
-
-interface FireRingClickProps {
-    active: () => boolean;
-}
 
 interface Click {
     x: number;
     y: number;
 }
 
-function FireRingClick(props: FireRingClickProps) {
+function FireRingClick() {
     const [clicks, setClicks] = createSignal<Click[]>([]);
 
     const handleClick = (e: PointerEvent) => {
@@ -20,12 +16,10 @@ function FireRingClick(props: FireRingClickProps) {
         }, 1000);
     };
 
-    createEffect(() => {
-        if (props.active()) {
-            document.addEventListener("pointerdown", handleClick);
-        } else {
-            document.removeEventListener("pointerdown", handleClick);
-        }
+    document.addEventListener("pointerdown", handleClick);
+
+    onCleanup(() => {
+        document.removeEventListener("pointerdown", handleClick);
     });
 
     return (

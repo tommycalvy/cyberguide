@@ -1,25 +1,18 @@
 import styles from './recording-countdown.module.css';
-import { createSignal, createEffect, Show } from 'solid-js';
+import { createSignal, onCleanup, Show } from 'solid-js';
 
-interface RecordingCountdownProps {
-    recording: () => boolean;
-}
+function RecordingCountdown() {
 
-function RecordingCountdown(props: RecordingCountdownProps) {
+    const [count, setCount] = createSignal(3);
 
-    const [count, setCount] = createSignal(0);
-
-    createEffect(() => {
-        if (props.recording()) {
-            setCount(3);
-            const interval = setInterval(() => {
-                setCount(c => c - 1);
-                if (count() === 0) {
-                    clearInterval(interval);
-                }
-            }, 800);
+    const interval = setInterval(() => {
+        setCount(c => c - 1);
+        if (count() === 0) {
+            clearInterval(interval);
         }
-    });
+    }, 800);
+
+    onCleanup(() => clearInterval(interval));
 
 
     return (
