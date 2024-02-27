@@ -86,6 +86,7 @@ class MessageListener {
         let c: MChannel = {
             ports: new Map(),
             msgListeners: new Map(),
+            cntListener: null,
             dcdListener: null,
         };
         this.#channels.set(channelName, c);

@@ -3,7 +3,55 @@ import { Channel, MessageListener } from '../src/utils/message-listener';
 import gcScriptPath from '../src/guide-creator/index?script';
 import { Action } from '../src/utils/types';
 import { createStore } from 'solid-js/store';
+import { createRoot } from 'solid-js';
+import type { GlobalState, GuideCreatorState, SidebarState, Instance } from '../src/utils/types';
 
+interface GuideCreatorInstance extends Instance {
+    state: GuideCreatorState;
+}
+
+interface SidebarInstance extends Instance {
+    state: SidebarState;
+}
+
+interface Cache {
+    global: GlobalState;
+    gcs: GuideCreatorInstance[];
+    sbs: SidebarInstance[];
+}
+
+const defaultCache: Cache = {
+    global: {
+        recording: false,
+        actions: [],
+    },
+    gcs: [],
+    sbs: [],
+};
+
+createRoot(() => {
+    const [cache, setCache] = createStore(defaultCache);
+    browser.storage.local.get().then((r) => {
+        setCache(r);
+    }).catch((err) => {
+        console.error(browser.runtime.lastError);
+        console.error(err);
+    });
+    
+    const messageListener = new MessageListener();
+    const sbChannel = new Channel('sb', messageListener);
+    const gcChannel = new Channel('gc', messageListener);
+
+    sbChannel.onConnect((port) => {
+        
+    });
+
+/*
+
+const [state, setState] = createStore({
+    recording: false,
+    gc: [],
+});
 console.log('background.ts');
 
 interface GCState {
@@ -156,6 +204,7 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
         }
     }
 });
+*/
 /*
 let sbPorts: Map<string, browser.Runtime.Port> = new Map();
 let gcPorts: Map<string, browser.Runtime.Port> = new Map();
