@@ -34,7 +34,7 @@ function recordClick(
 }
 
 
-function GuideCreator() {
+function GuideBuilder() {
     const [recording, setRecording] = createSignal(false);
     const [actions, setActions] = createSignal<Action[]>([]);
     const [previewing, setPreviewing] = createSignal(false);
@@ -78,4 +78,4 @@ function GuideCreator() {
     );
 }
 
-export default GuideCreator;
+export default GuideBuilder;

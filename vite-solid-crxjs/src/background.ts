@@ -1,50 +1,180 @@
 import browser from 'webextension-polyfill';
 import { Channel, MessageListener } from '../src/utils/message-listener';
 import gcScriptPath from '../src/guide-creator/index?script';
-import { Action } from '../src/utils/types';
-import { createStore } from 'solid-js/store';
-import { createRoot } from 'solid-js';
-import type { GlobalState, GuideCreatorState, SidebarState, Instance } from '../src/utils/types';
+import { getCurrentTabId } from '../src/utils/tab';
+import type { 
+    GlobalState, SharedState, GuideBuilderState, Instance, TabId, Message,
+} from '../src/utils/types';
+import { 
+    defaultGuideBuilderState, defaultSharedState,
+} from '../src/utils/types';
 
-interface GuideCreatorInstance extends Instance {
-    state: GuideCreatorState;
-}
+interface GuideBuilderInstance extends Instance {
+    state: GuideBuilderState;
+};
 
-interface SidebarInstance extends Instance {
-    state: SidebarState;
-}
+interface SidebarInstance extends Instance {};
+
+interface Storage {
+    global: GlobalState;
+    tabIdToSharedState: [TabId, SharedState][];
+    tabIdToGBS: [TabId, GuideBuilderInstance][];
+    tabIdToSBS: [TabId, SidebarInstance][];
+    portNameToTabId: [string, TabId][];
+};
 
 interface Cache {
     global: GlobalState;
-    gcs: GuideCreatorInstance[];
-    sbs: SidebarInstance[];
-}
+    shared: Map<TabId, SharedState>;
+    gbs: Map<TabId, GuideBuilderInstance>;
+    sbs: Map<TabId, SidebarInstance>;
+    portNameToTabId: Map<string, TabId>;
+};
 
 const defaultCache: Cache = {
     global: {
         recording: false,
         actions: [],
     },
-    gcs: [],
-    sbs: [],
+    shared: new Map(),
+    gbs: new Map(),
+    sbs: new Map(),
+    portNameToTabId: new Map(),
 };
 
-createRoot(() => {
-    const [cache, setCache] = createStore(defaultCache);
-    browser.storage.local.get().then((r) => {
-        setCache(r);
-    }).catch((err) => {
-        console.error(browser.runtime.lastError);
-        console.error(err);
-    });
-    
-    const messageListener = new MessageListener();
-    const sbChannel = new Channel('sb', messageListener);
-    const gcChannel = new Channel('gc', messageListener);
+const storage = await browser.storage.local.get().catch((err) => {
+    console.error(browser.runtime.lastError);
+    console.error(err);
+    return null;
+});
 
-    sbChannel.onConnect((port) => {
-        
-    });
+let cache: Cache;
+if (storage) {
+    const { global, tabIdToSharedState, tabIdToGBS, tabIdToSBS, portNameToTabId } = storage as Storage;
+    cache = {
+        global,
+        shared: new Map(tabIdToSharedState),
+        gbs: new Map(tabIdToGBS),
+        sbs: new Map(tabIdToSBS),
+        portNameToTabId: new Map(portNameToTabId),
+    };
+} else {
+    cache = defaultCache;
+}
+
+const messageListener = new MessageListener();
+const sbChannel = new Channel('sb', messageListener);
+const gbChannel = new Channel('gb', messageListener);
+
+sbChannel.onConnect(async (port) => {
+    await initState(
+        port, cache.sbs, defaultSidebarState, sbChannel, 
+        cache.portNameToTabId
+    );
+});
+
+gbChannel.onConnect(async (port) => {
+    await initState(
+        port, cache.gbs, defaultGuideBuilderState, gbChannel,
+        cache.portNameToTabId
+    );
+});
+
+sbChannel.onMessage('update', (port, msg) => {
+});
+
+function setValue<T, V>(obj: T, props: string[], value: V): void {
+    const lastProp = props.pop();
+    if (!lastProp) throw new Error("props array cannot be empty");
+
+    const lastObj = props.reduce((acc: any, prop: string) => {
+        if (!acc[prop]) acc[prop] = {};
+        return acc[prop];
+    }, obj);
+
+    lastObj[lastProp] = value;
+}
+
+async function initState(
+    port: browser.Runtime.Port,
+    instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
+    defaultState: GuideBuilderState | SidebarState,
+    channel: Channel,
+    portNameToTabId: Map<string, TabId>,
+): Promise<void> {
+    const senderTabId = port.sender?.tab?.id;
+    let tabId: TabId;
+    if (!senderTabId) {
+        console.error('No senderTabId found');
+        const activeTabId = await getCurrentTabId();
+        if (!activeTabId) {
+            console.error('No senderTabId or activeTabId found');
+            port.disconnect();
+            return;
+        }
+        tabId = activeTabId;
+    } else {
+        tabId = senderTabId;
+    }
+    portNameToTabId.set(port.name, tabId);
+    //TODO: Need to add global and shared state
+    const instance = instances.get(tabId);
+    if (!instance) {
+        instances.set(tabId, {
+            portName: port.name,
+            tabId: tabId,
+            connected: true,
+            state: defaultState,
+        });
+        channel.send(port.name, { type: 'init', data: null });
+    } else {
+        instance.portName = port.name;
+        instance.connected = true;
+        channel.send(port.name, { type: 'init', data: instance.state });
+    }
+}
+
+function updateState(
+    port: browser.Runtime.Port,
+    msg: Message,
+    portNameToTabId: Map<string, TabId>,
+    instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
+    sharedInstances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
+) {
+    if (!msg.key || !msg.value) {
+        console.error('No key or value found in msg:', msg);
+        port.disconnect();
+        return;
+    }
+    const tabId = portNameToTabId.get(port.name);
+    if (!tabId) {
+        console.error('No tabId found for port:', port.name);
+        port.disconnect();
+        return;
+    }
+    const instance = instances.get(tabId);
+    if (!instance) {
+        console.error('No instance found for tabId:', tabId);
+        port.disconnect();
+        return;
+    }
+    const scope = msg.key.shift();
+    if (scope === 'global') {
+        setValue(cache.global, msg.key, msg.value);
+    } else if (scope === 'shared') {
+        setValue(sbi.state, msg.key, msg.value);
+        const gbi = cache.gbs.get(tabId);
+        if (gbi) {
+            setValue(gbi.state, msg.key, msg.value);
+        } else {
+            console.error('No guide builder instance found for tabId:', tabId);
+        }
+    } else if (scope === 'local') {
+        setValue(sbi.state, msg.key, msg.value);
+    } else {
+        console.error('Invalid scope:', scope);
+    }
+}
 
 /*
 

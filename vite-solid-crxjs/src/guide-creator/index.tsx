@@ -1,4 +1,4 @@
-import GuideCreator from "./guide-creator";
+import GuideBuilder from "./guide-builder";
 import { render } from "solid-js/web";
 import creatorWidgetSyles from "./components/creator-widget.module.css?inline";
 import modernNormalizeStyles from "../styles/modern-normalize.css?inline";
@@ -6,10 +6,10 @@ import recordingCountdownStyles from "./components/recording-countdown.module.cs
 import fireRingClickStyles from "./components/fire-ring-click.module.css?inline";
 import previewGuideStyles from "./components/preview-guide.module.css?inline";
 
-console.log("Hello from GuideCreator.tsx");
+console.log("Hello from GuideBuilder.tsx");
 
 const shadowHost = document.createElement("div");
-shadowHost.id = "Cyber_Guide_Creator";
+shadowHost.id = "Cyber_Guide_Builder";
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
 
 const modernNormalizeSheet = new CSSStyleSheet();
@@ -36,4 +36,4 @@ shadowRoot.adoptedStyleSheets = [
 ];
 document.body.append(shadowHost);
 
-render(() => <GuideCreator />, shadowRoot);
+render(() => <GuideBuilder/>, shadowRoot);

@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill';
 import { Message } from './types';
+import type { Setter } from 'solid-js';
 
 class Port {
 
@@ -8,13 +9,15 @@ class Port {
     #name: string;
     #bport: browser.Runtime.Port | null;
     #listeners: Map<string, (msg: Message) => void>;
+    #setReconnectionAttempts: Setter<number>;
 
-    constructor(channel: string, randStrLen: number = 11) {
+    constructor(channel: string, setReconnectionAttempts: Setter<number>, randStrLen: number = 11) {
         // If channel is not 2 characters long, throw an error
         if (channel.length !== 2) {
             throw new Error('Channel must be 2 characters long');
         }
         this.#channel = channel;
+        this.#setReconnectionAttempts = setReconnectionAttempts;
         this.#randStrLen = randStrLen;
         this.#name = this.generateNewName();
         this.#bport = null;
@@ -62,6 +65,7 @@ class Port {
     reconnect(): void {
         console.log(this.#name, 'reconnecting');
         this.disconnect(); // Disconnect the current port
+        this.#setReconnectionAttempts((prev: number) => prev + 1);
         this.#name = this.generateNewName(); // Generate a new ID
         this.connect(); // Reconnect with the new ID
     }

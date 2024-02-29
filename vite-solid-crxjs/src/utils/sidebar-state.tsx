@@ -1,29 +1,24 @@
-import { createContext, useContext } from 'solid-js';
+import { createContext, useContext, createSignal, createEffect } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import Port from './message-producer';
-import { GlobalState, SidebarState } from './types';
-
-interface SidebarProviderState extends SidebarState {
-    global: GlobalState;
-}
-
-const defaultSidebarProviderState: SidebarProviderState = {
-    shared: {
-        previewing: false,
-    },
-    global: {
-        recording: false,
-        actions: [],
-    },
-};
+import { defaultSidebarProviderState } from './types';
 
 const SidebarContext = createContext();
 
 export function SidebarProvider(props: { children: any }) {
     const [state, setState] = createStore(defaultSidebarProviderState);
-    const bport = new Port('sb');
-    bport.setListener('sb-init-state', (msg) => {
-        setState(msg.data);
+    const [reconectionAttempts, setReconnectionAttempts] = createSignal(0);
+    const bport = new Port('sb', setReconnectionAttempts);
+    bport.setListener('init', (msg) => {
+        if (msg.data) {
+            setState(msg.data);
+        } else {
+            setState(defaultSidebarProviderState);
+        }
+        setReconnectionAttempts(0);
+    });
+    createEffect(() => {
+        console.log('reconnectionAttempts', reconectionAttempts()); 
     });
 
     const sidebar = [
@@ -33,25 +28,25 @@ export function SidebarProvider(props: { children: any }) {
                 const key: ['global', 'recording'] = ['global', 'recording'];
                 const value = true;
                 setState(...key, value);
-                bport.send({ type: 'sb-update-state', data: { key, value, }});
+                bport.send({ type: 'update', key, value });
             },
             stopRecording: () => {
                 const key: ['global', 'recording'] = ['global', 'recording'];
                 const value = false;
                 setState(...key, value);
-                bport.send({ type: 'sb-update-state', data: { key, value, }});
+                bport.send({ type: 'update', key, value });
             },
             startPreview: () => {
                 const key: ['shared', 'previewing'] = ['shared', 'previewing'];
                 const value = true;
                 setState(...key, value);
-                bport.send({ type: 'sb-update-state', data: { key, value, }});
+                bport.send({ type: 'update', key, value });
             },
             stopPreview: () => {
                 const key: ['shared', 'previewing'] = ['shared', 'previewing'];
                 const value = false;
                 setState(...key, value);
-                bport.send({ type: 'sb-update-state', data: { key, value, }});
+                bport.send({ type: 'update', key, value });
             },
         },
     ];

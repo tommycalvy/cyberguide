@@ -2,6 +2,8 @@ export interface Message {
     type: string;
     message?: string;
     data?: any;
+    key?: any[];
+    value?: any;
 }
 
 export interface StateChange extends Message {
@@ -23,19 +25,57 @@ export interface GlobalState {
     actions: Action[];
 };
 
-export interface GuideCreatorState {
-    shared: {
-        previewing: boolean;
-    };
-    local:{
-        currentStep: number;
-    };
+export const defaultGlobalState: GlobalState = {
+    recording: false,
+    actions: [],
+};
+
+export interface SharedState {
+    previewing: boolean;
+};
+
+export const defaultSharedState: SharedState = {
+    previewing: false,
 };
 
 export interface SidebarState {
-    shared: {
-        previewing: boolean;
-    };
+    theme: string;
+};
+
+export const defaultSidebarState: SidebarState = {
+    theme: 'dark',
+};
+
+export interface GuideBuilderState {
+    currentStep: number;
+};
+
+export const defaultGuideBuilderState: GuideBuilderState = {
+    currentStep: 0,
+};
+
+export interface SidebarProviderState {
+    global: GlobalState;
+    shared: SharedState;
+    local: SidebarState;
+}
+
+export const defaultSidebarProviderState: SidebarProviderState = {
+    global: defaultGlobalState,
+    shared: defaultSharedState,
+    local: defaultSidebarState,
+};
+
+export interface GuideBuilderProviderState {
+    global: GlobalState;
+    shared: SharedState;
+    local: GuideBuilderState;
+}
+
+export const defaultGuideBuilderProviderState: GuideBuilderProviderState = {
+    global: defaultGlobalState,
+    shared: defaultSharedState,
+    local: defaultGuideBuilderState,
 };
 
 export interface Instance {
@@ -43,3 +83,5 @@ export interface Instance {
     tabId: number;
     connected: boolean;
 };
+
+export type TabId = number;

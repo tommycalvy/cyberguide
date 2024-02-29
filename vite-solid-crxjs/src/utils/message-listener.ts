@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 import type { Message } from "./types";
 
-type MsgListener = (msg: Message, port: browser.Runtime.Port) => void;
+type MsgListener = (port: browser.Runtime.Port, msg: Message) => void;
 type PortListener = (port: browser.Runtime.Port) => void;
 type Failure = (err: Error) => void;
 
@@ -62,7 +62,7 @@ class MessageListener {
                 console.log(channelName, ": ", msg.type);
                 const listener = channel.msgListeners.get(msg.type);
                 if (listener) {
-                    listener(msg, port);
+                    listener(port, msg);
                 } else {
                     console.warn(`No listener for msg type: ${msg.type} in channel: ${channelName}`);
                 }
