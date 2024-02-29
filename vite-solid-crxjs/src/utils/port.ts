@@ -1,32 +1,36 @@
 import browser from 'webextension-polyfill';
-import { Message } from './types';
+import type { Message, MessageType } from '../types/messaging';
 import type { Setter } from 'solid-js';
 
 class Port {
 
-    #channel: string;
+    #channelName: string;
     #randStrLen: number;
     #name: string;
-    #bport: browser.Runtime.Port | null;
-    #listeners: Map<string, (msg: Message) => void>;
+    #backgroundPort: browser.Runtime.Port | null;
+    #messageListeners: Map<MessageType, (msg: Message) => void>;
     #setReconnectionAttempts: Setter<number>;
 
-    constructor(channel: string, setReconnectionAttempts: Setter<number>, randStrLen: number = 11) {
+    constructor(
+        channelName: string,
+        setReconnectionAttempts: Setter<number>,
+        randStrLen: number = 11,
+    ) {
         // If channel is not 2 characters long, throw an error
-        if (channel.length !== 2) {
+        if (channelName.length !== 2) {
             throw new Error('Channel must be 2 characters long');
         }
-        this.#channel = channel;
+        this.#channelName = channelName;
         this.#setReconnectionAttempts = setReconnectionAttempts;
         this.#randStrLen = randStrLen;
         this.#name = this.generateNewName();
-        this.#bport = null;
-        this.#listeners = new Map();
+        this.#backgroundPort = null;
+        this.#messageListeners = new Map();
         this.connect(); 
     }
 
     generateNewName(): string {
-        return this.#channel + '-' + this.randomString(this.#randStrLen);
+        return this.#channelName + '-' + this.randomString(this.#randStrLen);
     }
 
     randomString(len: number) {
@@ -39,26 +43,26 @@ class Port {
     }
 
     connect() {
-        this.#bport = browser.runtime.connect({ name: this.#name });
-        this.#bport.onMessage.addListener((msg) => {
+        this.#backgroundPort = browser.runtime.connect({ name: this.#name });
+        this.#backgroundPort.onMessage.addListener((msg) => {
             console.log(this.#name, 'received message:', msg);
-            const listener = this.#listeners.get(msg.type);
-            if (listener) {
-                listener(msg);
+            const messageListener = this.#messageListeners.get(msg.type);
+            if (messageListener) {
+                messageListener(msg);
             } else {
                 console.warn('No listener for message type:', msg.type);
             }
         });
-        this.#bport.onDisconnect.addListener(() => {
+        this.#backgroundPort.onDisconnect.addListener(() => {
             console.log(this.#name, 'disconnected');
             this.reconnect();
         });
     }
 
     disconnect(): void {
-        if (this.#bport) {
-            this.#bport.disconnect();
-            this.#bport = null; // Ensure the old port is cleared
+        if (this.#backgroundPort) {
+            this.#backgroundPort.disconnect();
+            this.#backgroundPort = null; // Ensure the old port is cleared
         }
     }
 
@@ -70,20 +74,20 @@ class Port {
         this.connect(); // Reconnect with the new ID
     }
 
-    // Method to add message listeners
-    setListener(messageType: string, callback: (msg: Message) => void): void {
-        this.#listeners.set(messageType, callback);
+    setMessageListener(
+        messageType: MessageType,
+        messageListener: (msg: Message) => void,
+    ) {
+        this.#messageListeners.set(messageType, messageListener);
     }
 
-    // Method to remove message listeners if needed
-    removeListener(messageType: string): boolean {
-        return this.#listeners.delete(messageType);
+    removeMessageListener(messageType: MessageType): boolean {
+        return this.#messageListeners.delete(messageType);
     }
 
-    // Method to send message
     send(msg: Message): void {
-        if (this.#bport) {
-            this.#bport.postMessage(msg);
+        if (this.#backgroundPort) {
+            this.#backgroundPort.postMessage(msg);
         } else {
             console.error('Port is not connected');
         }

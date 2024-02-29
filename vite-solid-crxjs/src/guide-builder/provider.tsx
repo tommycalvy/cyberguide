@@ -1,16 +1,21 @@
-import { createContext, useContext, createSignal, createEffect } from 'solid-js';
+import {
+    createContext,
+    useContext,
+    createSignal,
+    createEffect
+} from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { Action } from './types';
-import Port from './message-producer';
-import { defaultGuideBuilderProviderState } from './types';
+import type { Action } from '../types/extra';
+import Port from '../utils/message-producer';
+import { defaultGuideBuilderProviderState } from '../types/defaults';
 
 const GuideBuilderContext = createContext();
 
 export function GuideBuilderProvider(props: { children: any }) {
     const [state, setState] = createStore(defaultGuideBuilderProviderState);
     const [reconectionAttempts, setReconnectionAttempts] = createSignal(0);
-    const bport = new Port('gc', setReconnectionAttempts);
-    bport.setListener('init', (msg) => {
+    const backgroundPort = new Port('gc', setReconnectionAttempts);
+    backgroundPort.setMessageListener('init', (msg) => {
         if (msg.data) {
             setState(msg.data);
         } else {
@@ -26,16 +31,18 @@ export function GuideBuilderProvider(props: { children: any }) {
         state,
         {
             addGlobalAction: (action: Action) => {
-                const key: ['global', 'actions', number] = ['global', 'actions', state.global.actions.length];
+                const key: ['global', 'actions', number] = [
+                    'global', 'actions', state.global.actions.length
+                ];
                 const value = action;
                 setState(...key, value);
-                bport.send({ type: 'update', data: { key, value, }});
+                backgroundPort.send({ type: 'update', data: { key, value, }});
             },
             incrementCurrentStep: () => {
                 const key: ['local', 'currentStep'] = ['local', 'currentStep'];
                 const value = (step: number) => step + 1;
                 setState(...key, value);
-                bport.send({ type: 'update', data: { key, value, }});
+                backgroundPort.send({ type: 'update', data: { key, value, }});
             },
         },
     ];

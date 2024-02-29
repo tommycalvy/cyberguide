@@ -1,137 +1,92 @@
 import browser from 'webextension-polyfill';
-import { Channel, MessageListener } from '../src/utils/message-listener';
-import gcScriptPath from '../src/guide-creator/index?script';
+import { Channel, ChannelListener } from '../src/utils/channel';
+import gcScriptPath from '../src/guide-builder/index?script';
 import { getCurrentTabId } from '../src/utils/tab';
 import type { 
-    GlobalState, SharedState, GuideBuilderState, Instance, TabId, Message,
-} from '../src/utils/types';
-import { 
-    defaultGuideBuilderState, defaultSharedState,
-} from '../src/utils/types';
+    GlobalState, 
+    TabState,
+    GuideBuilderState, 
+    SidebarProviderState, 
+    GuideBuilderProviderState,
+    ProviderState,
+    Instance,
+    GuideBuilderInstance,
+    SidebarInstance,
+    StoredCache,
+    Cache,
+} from '../src/types/state';
+import type { TabId } from '../src/types/extra';
+import {
+    defaultGuideBuilderState,
+    defaultSidebarProviderState,
+    defaultCache,
+    defaultTabState,
+} from '../src/types/defaults';
 
-interface GuideBuilderInstance extends Instance {
-    state: GuideBuilderState;
-};
-
-interface SidebarInstance extends Instance {};
-
-interface Storage {
-    global: GlobalState;
-    tabIdToSharedState: [TabId, SharedState][];
-    tabIdToGBS: [TabId, GuideBuilderInstance][];
-    tabIdToSBS: [TabId, SidebarInstance][];
-    portNameToTabId: [string, TabId][];
-};
-
-interface Cache {
-    global: GlobalState;
-    shared: Map<TabId, SharedState>;
-    gbs: Map<TabId, GuideBuilderInstance>;
-    sbs: Map<TabId, SidebarInstance>;
-    portNameToTabId: Map<string, TabId>;
-};
-
-const defaultCache: Cache = {
-    global: {
-        recording: false,
-        actions: [],
-    },
-    shared: new Map(),
-    gbs: new Map(),
-    sbs: new Map(),
-    portNameToTabId: new Map(),
-};
-
-const storage = await browser.storage.local.get().catch((err) => {
+const storedCache = await browser.storage.local.get().catch((err) => {
     console.error(browser.runtime.lastError);
     console.error(err);
     return null;
 });
 
 let cache: Cache;
-if (storage) {
-    const { global, tabIdToSharedState, tabIdToGBS, tabIdToSBS, portNameToTabId } = storage as Storage;
+if (storedCache) {
+    const { 
+        globalState,
+        tabStates,
+        guideBuilderInstances,
+        sidebarInstances,
+        portNameToTabId,
+    } = storedCache as StoredCache;
     cache = {
-        global,
-        shared: new Map(tabIdToSharedState),
-        gbs: new Map(tabIdToGBS),
-        sbs: new Map(tabIdToSBS),
+        globalState,
+        tabStates: new Map(tabStates),
+        guideBuilderInstances: new Map(guideBuilderInstances),
+        sidebarInstances: new Map(sidebarInstances),
         portNameToTabId: new Map(portNameToTabId),
     };
 } else {
     cache = defaultCache;
 }
 
-const messageListener = new MessageListener();
-const sbChannel = new Channel('sb', messageListener);
-const gbChannel = new Channel('gb', messageListener);
+const channelListener = new ChannelListener();
+const sidebarChannel = new Channel('sb', channelListener);
+const guideBuilderChannel = new Channel('gb', channelListener);
 
-sbChannel.onConnect(async (port) => {
+sidebarChannel.onConnect(async (port) => {
     await initState(
         port, cache.sbs, defaultSidebarState, sbChannel, 
         cache.portNameToTabId
     );
 });
 
-gbChannel.onConnect(async (port) => {
+guideBuilderChannel.onConnect(async (port) => {
     await initState(
         port, cache.gbs, defaultGuideBuilderState, gbChannel,
         cache.portNameToTabId
     );
 });
 
-sbChannel.onMessage('update', (port, msg) => {
+sidebarChannel.onMessage('update', (port, msg) => {
 });
-
-function setValue<T, V>(obj: T, props: string[], value: V): void {
-    const lastProp = props.pop();
-    if (!lastProp) throw new Error("props array cannot be empty");
-
-    const lastObj = props.reduce((acc: any, prop: string) => {
-        if (!acc[prop]) acc[prop] = {};
-        return acc[prop];
-    }, obj);
-
-    lastObj[lastProp] = value;
-}
 
 async function initState(
     port: browser.Runtime.Port,
+    cache: Cache,
+    instanceName: string,
     instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
-    defaultState: GuideBuilderState | SidebarState,
+    providerState: GuideBuilderProviderState | SidebarProviderState,
     channel: Channel,
-    portNameToTabId: Map<string, TabId>,
 ): Promise<void> {
-    const senderTabId = port.sender?.tab?.id;
-    let tabId: TabId;
-    if (!senderTabId) {
-        console.error('No senderTabId found');
-        const activeTabId = await getCurrentTabId();
-        if (!activeTabId) {
-            console.error('No senderTabId or activeTabId found');
-            port.disconnect();
-            return;
-        }
-        tabId = activeTabId;
-    } else {
-        tabId = senderTabId;
-    }
-    portNameToTabId.set(port.name, tabId);
-    //TODO: Need to add global and shared state
-    const instance = instances.get(tabId);
-    if (!instance) {
-        instances.set(tabId, {
-            portName: port.name,
-            tabId: tabId,
-            connected: true,
-            state: defaultState,
-        });
-        channel.send(port.name, { type: 'init', data: null });
-    } else {
-        instance.portName = port.name;
-        instance.connected = true;
-        channel.send(port.name, { type: 'init', data: instance.state });
-    }
+    cache.portNameToTabId.set(port.name, tabId);
+
+    providerState.global = cache.globalState;
+
+    initTabState(cache.tabStates, tabId, providerState.tab);
+
+    initInstance(instances, tabId, instanceName, port.name);
+
+    channel.send(port.name, { type: 'init', data: providerState });
 }
 
 function updateState(
@@ -175,6 +130,95 @@ function updateState(
         console.error('Invalid scope:', scope);
     }
 }
+
+async function getTabIdFromMessageSender(port: browser.Runtime.Port): TabId | null {
+    const senderTabId = port.sender?.tab?.id;
+    let tabId: TabId;
+    if (!senderTabId) {
+        console.warn('No senderTabId found');
+        const activeTabId = await getCurrentTabId();
+        if (!activeTabId) {
+            console.error('No senderTabId or activeTabId found');
+            port.disconnect();
+            return;
+        }
+        tabId = activeTabId;
+    } else {
+        tabId = senderTabId;
+    }
+}
+
+function initTabState(
+    tabStates: Map<TabId, TabState>,
+    tabId: TabId,
+    providerTabState: TabState
+) {
+    const tabState = tabStates.get(tabId);
+    if (!tabState) {
+        // Initialize tab state for tabId
+        cache.tabStates.set(tabId, providerTabState);
+        addTabStateToStorage(tabId, providerTabState);
+    } else {
+        providerTabState = tabState;
+    }
+}
+
+function initInstance(
+    instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
+    tabId: TabId,
+    instanceName: string,
+    portName: string,
+) {
+    const instance = instances.get(tabId);
+    if (!instance) {
+        const newInstance: Instance = {
+            portName: portName,
+            tabId: tabId,
+            connected: true,
+        };
+        instances.set(tabId, newInstance);
+        addInstanceToStorage(instanceName, newInstance);
+    } else {
+        instance.portName = portName;
+        instance.connected = true;
+    }
+}
+
+function addInstanceToStorage(
+    instanceName: string,
+    instance: GuideBuilderInstance | SidebarInstance
+) {
+    browser.storage.local.get(instanceName).then(async (r) => {
+        r[instanceName].push(instance);
+        await browser.storage.local.set({ instanceName: r[instanceName] });
+    }).catch((err) => {
+        console.error(browser.runtime.lastError);
+        console.error(err);
+    });
+}
+
+function addTabStateToStorage(tabId: TabId, tabState: TabState) {
+    browser.storage.local.get("tabStates").then(async (r) => {
+        r.tabStates.push([tabId, tabState]);
+        await browser.storage.local.set({ tabStates: r.tabStates });
+    }).catch((err) => {
+        console.error(browser.runtime.lastError);
+        console.error(err);
+    });
+}
+
+function setValue<T, V>(obj: T, props: string[], value: V): void {
+    const lastProp = props.pop();
+    if (!lastProp) throw new Error("props array cannot be empty");
+
+    const lastObj = props.reduce((acc: any, prop: string) => {
+        if (!acc[prop]) acc[prop] = {};
+        return acc[prop];
+    }, obj);
+
+    lastObj[lastProp] = value;
+}
+
 
 /*
 
