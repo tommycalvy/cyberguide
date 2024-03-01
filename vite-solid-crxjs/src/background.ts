@@ -5,22 +5,23 @@ import { getCurrentTabId } from '../src/utils/tab';
 import type { 
     GlobalState, 
     TabState,
-    GuideBuilderState, 
     SidebarProviderState, 
     GuideBuilderProviderState,
-    ProviderState,
     Instance,
     GuideBuilderInstance,
     SidebarInstance,
     StoredCache,
     Cache,
+    TabId_To_Instance,
+    PortName_To_TabId,
 } from '../src/types/state';
 import type { TabId } from '../src/types/extra';
+import type { Message } from '../src/types/messaging';
 import {
-    defaultGuideBuilderState,
     defaultSidebarProviderState,
     defaultCache,
     defaultTabState,
+    defaultGuideBuilderProviderState,
 } from '../src/types/defaults';
 
 const storedCache = await browser.storage.local.get().catch((err) => {
@@ -33,17 +34,17 @@ let cache: Cache;
 if (storedCache) {
     const { 
         globalState,
-        tabStates,
-        guideBuilderInstances,
-        sidebarInstances,
-        portNameToTabId,
+        tabId_to_tabState,
+        tabId_to_guideBuilderInstance,
+        tabId_to_sidebarInstance,
+        portName_to_tabId,
     } = storedCache as StoredCache;
     cache = {
         globalState,
-        tabStates: new Map(tabStates),
-        guideBuilderInstances: new Map(guideBuilderInstances),
-        sidebarInstances: new Map(sidebarInstances),
-        portNameToTabId: new Map(portNameToTabId),
+        tabId_to_tabState: new Map(tabId_to_tabState),
+        tabId_to_guideBuilderInstance: new Map(tabId_to_guideBuilderInstance),
+        tabId_to_sidebarInstance: new Map(tabId_to_sidebarInstance),
+        portName_to_tabId: new Map(portName_to_tabId),
     };
 } else {
     cache = defaultCache;
@@ -55,15 +56,23 @@ const guideBuilderChannel = new Channel('gb', channelListener);
 
 sidebarChannel.onConnect(async (port) => {
     await initState(
-        port, cache.sbs, defaultSidebarState, sbChannel, 
-        cache.portNameToTabId
+        port,
+        cache,
+        'sidebarInstances',
+        cache.tabId_to_sidebarInstance,
+        defaultSidebarProviderState,
+        sidebarChannel,
     );
 });
 
 guideBuilderChannel.onConnect(async (port) => {
     await initState(
-        port, cache.gbs, defaultGuideBuilderState, gbChannel,
-        cache.portNameToTabId
+        port,
+        cache,
+        'guideBuilderInstances',
+        cache.tabId_to_guideBuilderInstance,
+        defaultGuideBuilderProviderState,
+        guideBuilderChannel,
     );
 });
 
@@ -73,79 +82,132 @@ sidebarChannel.onMessage('update', (port, msg) => {
 async function initState(
     port: browser.Runtime.Port,
     cache: Cache,
-    instanceName: string,
+    instancesName: string,
     instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
     providerState: GuideBuilderProviderState | SidebarProviderState,
     channel: Channel,
 ): Promise<void> {
-    cache.portNameToTabId.set(port.name, tabId);
+    const tabId = await getTabIdFromMessageSender(port, (err) => {
+        console.error(err);
+    });
+
+    if (!tabId) {
+        console.error('No tabId found');
+        port.disconnect();
+        return;
+    }
+
+    const portName = port.name;
+
+    cache.portName_to_tabId.set(portName, tabId);
 
     providerState.global = cache.globalState;
 
-    initTabState(cache.tabStates, tabId, providerState.tab);
+    initTabState(cache.tabId_to_tabState, tabId, providerState.tab);
 
-    initInstance(instances, tabId, instanceName, port.name);
+    initInstance(instances, tabId, instancesName, portName, channel);
 
-    channel.send(port.name, { type: 'init', data: providerState });
+    channel.send(portName, { type: 'init', data: providerState });
 }
 
 function updateState(
     port: browser.Runtime.Port,
+    cache: Cache,
     msg: Message,
-    portNameToTabId: Map<string, TabId>,
-    instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
-    sharedInstances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
+    channels: Channel[],
+    portName_to_tabId: PortName_To_TabId,
+    tabIds_to_instances: TabId_To_Instance[],
 ) {
-    if (!msg.key || !msg.value) {
+    const key = msg.key;
+    const value = msg.value;
+
+    if (!key || !value) {
         console.error('No key or value found in msg:', msg);
         port.disconnect();
         return;
+    } 
+    
+    const scope = key[0];
+
+    if (scope === 'global') {
+        updateGlobalState(cache.globalState, channels, key, value);
+        return;
     }
-    const tabId = portNameToTabId.get(port.name);
+
+    const tabId = portName_to_tabId.get(port.name);
     if (!tabId) {
         console.error('No tabId found for port:', port.name);
         port.disconnect();
         return;
     }
-    const instance = instances.get(tabId);
-    if (!instance) {
-        console.error('No instance found for tabId:', tabId);
-        port.disconnect();
+
+    if (scope === 'tab') {
+        updateTabState(
+            cache.tabId_to_tabState,
+            tabId,
+            tabIds_to_instances,
+            key,
+            value, 
+            (err) => {
+                console.error(err);
+                port.disconnect();
+            }
+        );
         return;
-    }
-    const scope = msg.key.shift();
-    if (scope === 'global') {
-        setValue(cache.global, msg.key, msg.value);
-    } else if (scope === 'shared') {
-        setValue(sbi.state, msg.key, msg.value);
-        const gbi = cache.gbs.get(tabId);
-        if (gbi) {
-            setValue(gbi.state, msg.key, msg.value);
-        } else {
-            console.error('No guide builder instance found for tabId:', tabId);
-        }
-    } else if (scope === 'local') {
-        setValue(sbi.state, msg.key, msg.value);
-    } else {
-        console.error('Invalid scope:', scope);
     }
 }
 
-async function getTabIdFromMessageSender(port: browser.Runtime.Port): TabId | null {
+function updateTabState(
+    tabStates: Map<TabId, TabState>,
+    tabId: TabId,
+    tabIds_to_instances: TabId_To_Instance[],
+    key: any[],
+    value: any,
+    failure: (err: Error) => void,
+) {
+    let tabState = tabStates.get(tabId);
+    if (!tabState) {
+        failure(new Error(`No tabState found for tabId: ${tabId}`));
+    }
+    setValue(tabState, key.slice(1), value);
+    tabIds_to_instances.forEach((tabId_to_instance) => {
+        const instance = tabId_to_instance.get(tabId);
+        if (!instance) {
+            console.error('No instance found for tabId:', tabId);
+        } else {
+            instance.channel.send(instance.portName, { 
+                type: 'update', key, value 
+            });
+        }
+    });
+}
+
+function updateGlobalState(
+    globalState: GlobalState,
+    channels: Channel[],
+    key: any[],
+    value: any
+) {
+    setValue(globalState, key.slice(1), value);
+    channels.forEach((channel) => {
+        channel.sendToAll({ type: 'update', key, value });
+    });
+}
+async function getTabIdFromMessageSender(
+    port: browser.Runtime.Port,
+    failure: (err: Error) => void,
+): Promise<TabId | null> {
     const senderTabId = port.sender?.tab?.id;
-    let tabId: TabId;
     if (!senderTabId) {
         console.warn('No senderTabId found');
         const activeTabId = await getCurrentTabId();
         if (!activeTabId) {
-            console.error('No senderTabId or activeTabId found');
-            port.disconnect();
-            return;
+            failure(new Error('No senderTabId or activeTabId found'));
+            return null;
         }
-        tabId = activeTabId;
-    } else {
-        tabId = senderTabId;
+        return activeTabId;
     }
+    return senderTabId;
 }
 
 function initTabState(
@@ -166,8 +228,9 @@ function initTabState(
 function initInstance(
     instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
     tabId: TabId,
-    instanceName: string,
+    instancesName: string,
     portName: string,
+    channel: Channel,
 ) {
     const instance = instances.get(tabId);
     if (!instance) {
@@ -175,9 +238,10 @@ function initInstance(
             portName: portName,
             tabId: tabId,
             connected: true,
+            channel,
         };
         instances.set(tabId, newInstance);
-        addInstanceToStorage(instanceName, newInstance);
+        addInstanceToStorage(instancesName, newInstance);
     } else {
         instance.portName = portName;
         instance.connected = true;
@@ -185,12 +249,12 @@ function initInstance(
 }
 
 function addInstanceToStorage(
-    instanceName: string,
+    instancesName: string,
     instance: GuideBuilderInstance | SidebarInstance
 ) {
-    browser.storage.local.get(instanceName).then(async (r) => {
-        r[instanceName].push(instance);
-        await browser.storage.local.set({ instanceName: r[instanceName] });
+    browser.storage.local.get(instancesName).then(async (r) => {
+        r[instancesName].push(instance);
+        await browser.storage.local.set({ instancesName: r[instancesName] });
     }).catch((err) => {
         console.error(browser.runtime.lastError);
         console.error(err);
@@ -215,7 +279,10 @@ function setValue<T, V>(obj: T, props: string[], value: V): void {
         if (!acc[prop]) acc[prop] = {};
         return acc[prop];
     }, obj);
-
+    if (lastObj[lastProp] === undefined) {
+        console.error('No value found for props:', props);
+        return;
+    }
     lastObj[lastProp] = value;
 }
 
