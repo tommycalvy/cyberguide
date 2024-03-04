@@ -167,13 +167,16 @@ export class Channel {
         });
     }
 
-    sendToAll(msg: Message) {
+    sendToAll(msg: Message, exceptPortName: string) {
         const channel = this.#channelListener.getChannel(this.#channelName);
         if (!channel) {
             console.error(`No channel with name: ${this.#channelName}`);
             return;
         }
         channel.ports.forEach((p) => {
+            if (p.name === exceptPortName) {
+                return;
+            }
             p.port.postMessage(msg);
         });
     }
