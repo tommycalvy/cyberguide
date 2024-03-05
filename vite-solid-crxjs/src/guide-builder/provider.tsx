@@ -6,10 +6,26 @@ import {
 } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import type { Action } from '../types/extra';
-import Port from '../utils/message-producer';
+import Port from '../utils/port';
+import { GuideBuilderProviderState } from '../types/state';
 import { defaultGuideBuilderProviderState } from '../types/defaults';
 
-const GuideBuilderContext = createContext();
+type GuideBuilderContextValue = [
+    state: GuideBuilderProviderState,
+    actions: {
+        addGlobalAction: (action: Action) => void,
+        incrementCurrentStep: () => void,
+    },
+];
+
+
+const GuideBuilderContext = createContext<GuideBuilderContextValue>([
+    defaultGuideBuilderProviderState,
+    {
+        addGlobalAction: () => undefined,
+        incrementCurrentStep: () => undefined,
+    },
+]);
 
 export function GuideBuilderProvider(props: { children: any }) {
     const [state, setState] = createStore(defaultGuideBuilderProviderState);
@@ -27,7 +43,7 @@ export function GuideBuilderProvider(props: { children: any }) {
         console.log('reconnectionAttempts', reconectionAttempts()); 
     });
 
-    const guideBuilder = [
+    const guideBuilder: GuideBuilderContextValue = [
         state,
         {
             addGlobalAction: (action: Action) => {
@@ -39,7 +55,7 @@ export function GuideBuilderProvider(props: { children: any }) {
                 backgroundPort.send({ type: 'update', data: { key, value, }});
             },
             incrementCurrentStep: () => {
-                const key: ['local', 'currentStep'] = ['local', 'currentStep'];
+                const key: ['tab', 'currentStep'] = ['tab', 'currentStep'];
                 const value = (step: number) => step + 1;
                 setState(...key, value);
                 backgroundPort.send({ type: 'update', data: { key, value, }});

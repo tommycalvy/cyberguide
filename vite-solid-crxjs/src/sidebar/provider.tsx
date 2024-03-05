@@ -5,10 +5,29 @@ import {
     createEffect
 } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import Port from '../utils/message-producer';
+import Port from '../utils/port';
+import { SidebarProviderState } from '../types/state';
 import { defaultSidebarProviderState } from '../types/defaults';
 
-const SidebarContext = createContext();
+type SidebarContextValue = [
+    state: SidebarProviderState,
+    actions: {
+        startRecording: () => void,
+        stopRecording: () => void,
+        startPreview: () => void,
+        stopPreview: () => void,
+    },
+];
+
+const SidebarContext = createContext<SidebarContextValue>([
+    defaultSidebarProviderState,
+    {
+        startRecording: () => undefined,
+        stopRecording: () => undefined,
+        startPreview: () => undefined,
+        stopPreview: () => undefined,
+    },
+]);
 
 export function SidebarProvider(props: { children: any }) {
     const [state, setState] = createStore(defaultSidebarProviderState);
@@ -26,7 +45,7 @@ export function SidebarProvider(props: { children: any }) {
         console.log('reconnectionAttempts', reconectionAttempts()); 
     });
 
-    const sidebar = [
+    const sidebar: SidebarContextValue = [
         state,
         {
             startRecording: () => {

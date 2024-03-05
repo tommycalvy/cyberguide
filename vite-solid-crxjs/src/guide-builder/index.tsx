@@ -1,6 +1,5 @@
 import GuideBuilder from "./guide-builder";
 import { render } from "solid-js/web";
-import creatorWidgetSyles from "./components/creator-widget.module.css?inline";
 import modernNormalizeStyles from "../styles/modern-normalize.css?inline";
 import recordingCountdownStyles from "./components/recording-countdown.module.css?inline";
 import fireRingClickStyles from "./components/fire-ring-click.module.css?inline";
@@ -15,9 +14,6 @@ const shadowRoot = shadowHost.attachShadow({ mode: "open" });
 const modernNormalizeSheet = new CSSStyleSheet();
 modernNormalizeSheet.replaceSync(modernNormalizeStyles);
 
-const creatorWidgetSheet = new CSSStyleSheet();
-creatorWidgetSheet.replaceSync(creatorWidgetSyles);
-
 const recordingCountdownSheet = new CSSStyleSheet();
 recordingCountdownSheet.replaceSync(recordingCountdownStyles);
 
@@ -29,7 +25,6 @@ previewGuideSheet.replaceSync(previewGuideStyles);
 
 shadowRoot.adoptedStyleSheets = [
     modernNormalizeSheet,
-    creatorWidgetSheet,
     recordingCountdownSheet,
     fireRingClickSheet,
     previewGuideSheet,

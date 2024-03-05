@@ -1,7 +1,6 @@
 import { 
     GlobalState, 
     TabState,
-    GuideBuilderState,
     SidebarProviderState,
     GuideBuilderProviderState,
     Cache,
@@ -18,9 +17,6 @@ export const defaultGlobalState: GlobalState = {
 
 export const defaultTabState: TabState = {
     previewing: false,
-};
-
-export const defaultGuideBuilderState: GuideBuilderState = {
     currentStep: 0,
 };
 
@@ -32,13 +28,12 @@ export const defaultSidebarProviderState: SidebarProviderState = {
 export const defaultGuideBuilderProviderState: GuideBuilderProviderState = {
     global: defaultGlobalState,
     tab: defaultTabState,
-    local: defaultGuideBuilderState,
 };
 
 export const defaultCache: Cache = {
     globalState: defaultGlobalState,
-    tabStates: new Map<TabId,TabState>(),
-    guideBuilderInstances: new Map<TabId,GuideBuilderInstance>(),
-    sidebarInstances: new Map<TabId,SidebarInstance>(),
-    portNameToTabId: new Map<PortName,TabId>(),
+    tabId_to_tabState: new Map<TabId,TabState>(),
+    tabId_to_guideBuilderInstance: new Map<TabId,GuideBuilderInstance>(),
+    tabId_to_sidebarInstance: new Map<TabId,SidebarInstance>(),
+    portName_to_tabId: new Map<PortName,TabId>(),
 };

@@ -1,15 +1,41 @@
-import { createSignal, createEffect, Show } from 'solid-js';
-import Port from '../utils/message-producer';
+import { createEffect, Show } from 'solid-js';
 import RecordingCountdown from "./components/recording-countdown";
 import FireRingClick from "./components/fire-ring-click";
 import PreviewGuide from "./components/preview-guide";
-import { Action } from '../utils/types';
+import { GuideBuilderProvider, useGuideBuilder } from './provider';
+import type { Action } from '../types/extra';
+
+
+export default function GuideBuilder() {
+
+    const [state, { addGlobalAction }] = useGuideBuilder(); 
+
+    const clickListener = (e: PointerEvent) => recordClick(e, addGlobalAction);
+
+    createEffect(() => {
+        if (state.global.recording) {
+            document.addEventListener('pointerdown', clickListener);
+        } else {
+            document.removeEventListener('pointerdown', clickListener);
+        }
+    });
+        
+    return (
+        <GuideBuilderProvider>
+            <Show when={state.global.recording}>
+                <RecordingCountdown />
+                <FireRingClick />
+            </Show>
+            <Show when={state.tab.previewing}>
+                <PreviewGuide />
+            </Show>
+        </GuideBuilderProvider>
+    );
+}
 
 function recordClick(
     e: PointerEvent,
-    bport: Port,
-    actions: () => Action[],
-    setActions: (actions: Action[]) => void,
+    addGlobalAction: (action: Action) => void,
 ) {
     if (e.target instanceof Element === false) {
         console.error(new Error('not an Element'));
@@ -27,55 +53,7 @@ function recordClick(
             console.error(new Error('url is null'));
         }
         const action = { type: 'click', url: url, elt: e.target };
-        bport.send({type: "action", data: action });
-        setActions([...actions(), action]);
+        addGlobalAction(action);
         e.target.removeEventListener('pointerup', logElement);
     });
 }
-
-
-function GuideBuilder() {
-    const [recording, setRecording] = createSignal(false);
-    const [actions, setActions] = createSignal<Action[]>([]);
-    const [previewing, setPreviewing] = createSignal(false);
-
-    const bport = new Port('gc');
-    bport.setListener('start-recording', () => {
-        setRecording(true);
-    });
-    bport.setListener('stop-recording', () => {
-        setRecording(false);
-    });
-    bport.setListener('start-preview', () => {
-        setPreviewing(true);
-    });
-    bport.setListener('stop-preview', () => {
-        setPreviewing(false);
-    });
-
-    const clickListener = (e: PointerEvent) => recordClick(
-        e, bport, actions, setActions
-    );
-
-    createEffect(() => {
-        if (recording()) {
-            document.addEventListener('pointerdown', clickListener);
-        } else {
-            document.removeEventListener('pointerdown', clickListener);
-        }
-    });
-        
-    return (
-        <>
-            <Show when={recording()}>
-                <RecordingCountdown />
-                <FireRingClick />
-            </Show>
-            <Show when={previewing()}>
-                <PreviewGuide actions={actions} />
-            </Show>
-        </>
-    );
-}
-
-export default GuideBuilder;
