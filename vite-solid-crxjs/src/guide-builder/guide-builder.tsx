@@ -3,17 +3,20 @@ import RecordingCountdown from "./components/recording-countdown";
 import FireRingClick from "./components/fire-ring-click";
 import PreviewGuide from "./components/preview-guide";
 import { GuideBuilderProvider, useGuideBuilder } from './provider';
-import type { Action } from '../types/extra';
+import type { GlobalClick } from '../types/state';
 
 
 export default function GuideBuilder() {
 
-    const [state, { addGlobalAction }] = useGuideBuilder(); 
+    const [
+        { global: { globalRecording }, tab: { tabPreviewing } }, 
+        { global: { addGlobalClick }},
+    ] = useGuideBuilder(); 
 
-    const clickListener = (e: PointerEvent) => recordClick(e, addGlobalAction);
+    const clickListener = (e: PointerEvent) => recordClick(e, addGlobalClick);
 
     createEffect(() => {
-        if (state.global.recording) {
+        if (globalRecording()) {
             document.addEventListener('pointerdown', clickListener);
         } else {
             document.removeEventListener('pointerdown', clickListener);
@@ -22,11 +25,11 @@ export default function GuideBuilder() {
         
     return (
         <GuideBuilderProvider>
-            <Show when={state.global.recording}>
+            <Show when={globalRecording()}>
                 <RecordingCountdown />
                 <FireRingClick />
             </Show>
-            <Show when={state.tab.previewing}>
+            <Show when={tabPreviewing()}>
                 <PreviewGuide />
             </Show>
         </GuideBuilderProvider>
@@ -35,7 +38,7 @@ export default function GuideBuilder() {
 
 function recordClick(
     e: PointerEvent,
-    addGlobalAction: (action: Action) => void,
+    addGlobalClick: (globalClick: GlobalClick) => void,
 ) {
     if (e.target instanceof Element === false) {
         console.error(new Error('not an Element'));
@@ -52,8 +55,7 @@ function recordClick(
         if (url === null) {
             console.error(new Error('url is null'));
         }
-        const action = { type: 'click', url: url, elt: e.target };
-        addGlobalAction(action);
+        addGlobalClick({ url: url, elt: e.target });
         e.target.removeEventListener('pointerup', logElement);
     });
 }

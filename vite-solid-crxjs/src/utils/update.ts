@@ -12,3 +12,4 @@ export function updateGlobalValue(key: string, channels: Channel[]) {
         });
     });
 }
+

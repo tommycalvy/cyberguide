@@ -90,7 +90,7 @@ export function GuideBuilderProvider(props: { children: any }) {
         },
         {
             global: { addGlobalClick, },
-            tab: { incrementTabCurrentStep, }
+            tab: { incrementTabCurrentStep, },
         },
     ];
 

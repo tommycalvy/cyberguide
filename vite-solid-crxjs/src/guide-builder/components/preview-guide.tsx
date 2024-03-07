@@ -1,17 +1,19 @@
-import { Action } from '../../types/extra';
-import { createSignal, createRenderEffect, onCleanup, Show } from 'solid-js';
+import { createMemo, onCleanup, Show } from 'solid-js';
 import styles from './preview-guide.module.css';
 import { useGuideBuilder } from '../provider';
+import { GlobalClick } from '../../types/state';
 
 export default function PreviewGuide() {
-    const [state, { incrementCurrentStep }] = useGuideBuilder();
-    const [boundingRect, setBoundingRect] = createSignal<DOMRect | null>(null);
+    const [
+        { global: { globalClicks }, tab: { tabCurrentStep } },
+        { tab: { incrementTabCurrentStep } },
+    ] = useGuideBuilder();
    
     const clickListener = (e: PointerEvent) => handleClick(
         e, 
-        state.global.actions,
-        state.tab.currentStep,
-        incrementCurrentStep,
+        globalClicks,
+        tabCurrentStep,
+        incrementTabCurrentStep,
     );
 
     document.addEventListener('pointerup', clickListener);
@@ -20,26 +22,28 @@ export default function PreviewGuide() {
         document.removeEventListener('pointerup', clickListener);
     });
     
-    createRenderEffect(() => {
-        if (state.global.actions.length === 0) {
+    const boundingRect = createMemo(() => {
+        const clicks = globalClicks();
+        const clicksLength = clicks.length;
+        const currentStep = tabCurrentStep();
+        if (clicksLength === 0) {
             return;
         }
-        if (state.tab.currentStep === state.global.actions.length) {
+        if (currentStep === clicksLength) {
             return;
         }
-        const elt = state.global.actions[state.tab.currentStep].elt;
+        const elt = clicks[currentStep].elt;
         const rect = elt.getBoundingClientRect();
         if (rect instanceof DOMRect === false) {
             console.error(new Error('not a DOMRect'));
             return;
         }
-        setBoundingRect(rect);
-    });
+        return rect;
+    }, { equals: false });
     
     return (
-        <Show when={
-            boundingRect() && 
-            state.tab.currentStep < state.global.actions.length
+        <Show when={ 
+            boundingRect() && tabCurrentStep() < globalClicks().length
         }>
             <div class={styles["click-area"]} style={{ 
                 top: `${boundingRect()?.top}px`,
@@ -54,9 +58,9 @@ export default function PreviewGuide() {
 
 function handleClick(
     e: PointerEvent,
-    actions: Action[],
-    currentStep: number,
-    incrementCurrentStep: () => void,
+    globalClicks: () => GlobalClick[],
+    tabCurrentStep: () => number,
+    incrementTabCurrentStep: () => void,
 ) {
     if (e.target instanceof Element === false) {
         console.error(new Error('not an Element'));
@@ -70,28 +74,18 @@ function handleClick(
         console.log(e.target);
         let url = window.location.href;
         console.log(url);
-        if (url === null) {
-            console.error(new Error('url is null'));
-        }
-        const action = actions[currentStep];
-        let error = false;
-        if (action.type !== 'click') {
-            console.error(new Error('action type is not click'));
-            error = true;
-        }
-        if (action.url !== url) {
+
+        const click = globalClicks()[tabCurrentStep()];
+        if (click.url !== url) {
             console.error(new Error('url does not match'));
-            error = true;
-        }
-        if (action.elt !== e.target) {
-            console.error(new Error('element does not match'));
-            error = true;
-        }
-        if (error) {
             return;
         }
-        console.log('action matches');
-        incrementCurrentStep();
+        if (!click.elt.isEqualNode(e.target)) {
+            console.error(new Error('element does not match'));
+            return;
+        }
+        console.log('click matches');
+        incrementTabCurrentStep();
         e.target.removeEventListener('pointerup', logElement);
     });
 }

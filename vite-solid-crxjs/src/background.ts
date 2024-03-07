@@ -9,14 +9,7 @@ import type {
     StoredCache,
 } from '../src/types/state';
 import type { TabId, PortName } from '../src/types/messaging';
-import {
-    defaultGlobalState,
-    defaultTabState,
-} from '../src/types/defaults';
-import { updateGlobalRecordingListener } from './signals/global/recording';
-import { updateGlobalClicksListener } from './signals/global/clicks';
-import { updateTabPreviewingListener } from './signals/tab/previewing';
-import { updateTabCurrentStepListener } from './signals/tab/currentStep';
+import { defaultGlobalState, defaultTabState } from '../src/types/defaults';
 
 class Background {
 
@@ -58,9 +51,18 @@ class Background {
         
         const channels = [this.sidebarChannel, this.guideBuilderChannel];
 
-        const globalStateKeys = ['recording', 'clicks'];
+        const globalVarKeys = ['recording'];
+        globalVarKeys.forEach((key) => {
+            channels.forEach((channel) => {
+                this.onMessageUpdateGlobalVar(channel, channels, key);
+            });
+        });
 
-        channels.forEach((channel) => {
+        const globalArrayKeys = ['clicks'];
+        globalArrayKeys.forEach((key) => {
+            channels.forEach((channel) => {
+                this.onMessageUpdateGlobalArray(channel, channels, key);
+            });
         });
 
         const tabStateKeys = ['previewing', 'currentStep'];
@@ -208,7 +210,7 @@ class Background {
         });
     }
 
-    onMessageUpdateGlobalState(
+    onMessageUpdateGlobalVar(
         channel: Channel,
         channels: Channel[],
         key: string
@@ -223,9 +225,30 @@ class Background {
                     throw new Error('globalState not found in storage');
                 }
                 globalState[key] = msg.data;
-                browser.storage.local.set({ 
-                    [key]: [...globalClicks, msg.data] 
-                });
+                browser.storage.local.set({ globalState });
+            });
+        });
+    }
+
+    onMessageUpdateGlobalArray(
+        channel: Channel,
+        channels: Channel[],
+        key: string
+    ) {
+        channel.onMessage('global-' + key, (port, msg) => {
+            channels.forEach((channel) => {
+                channel.sendToAll(msg, port.name);
+            });
+            browser.storage.local.get('globalState').then((r) => {
+                const globalState = r.globalState;
+                if (!globalState) {
+                    throw new Error('globalState not found in storage');
+                }
+                if (!Array.isArray(globalState[key])) {
+                    throw new Error('global-' + key + ' is not an array');
+                }
+                globalState[key].push(msg.data);
+                browser.storage.local.set({ globalState });
             });
         });
     }
