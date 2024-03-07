@@ -7,6 +7,6 @@ export interface Action {
 
 
 
-export type TabId = number;
+export type TabId = string;
 
 export type PortName = string;

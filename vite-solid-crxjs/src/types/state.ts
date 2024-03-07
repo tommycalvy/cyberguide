@@ -1,10 +1,21 @@
-import type { Action, TabId } from '../types/extra';
+import type { TabId } from '../types/extra';
 import type { PortName } from '../types/messaging';
 import { Channel } from '../utils/channel';
+import type { Accessor } from 'solid-js';
+
+export interface GlobalClick {
+    url: string;
+    elt: Element;
+};
 
 export interface GlobalState {
     recording: boolean;
-    actions: Action[];
+    clicks: GlobalClick[];
+};
+
+interface GlobalStateAccessors {
+    globalRecording: Accessor<boolean>;
+    globalClicks: Accessor<GlobalClick[]>;
 };
 
 export interface TabState {
@@ -12,21 +23,23 @@ export interface TabState {
     currentStep: number;
 };
 
-export interface SidebarProviderState {
-    global: GlobalState;
-    tab: TabState;
-}
+interface TabStateAccessors {
+    tabPreviewing: Accessor<boolean>;
+    tabCurrentStep: Accessor<number>;
+};
 
-export interface GuideBuilderProviderState {
-    global: GlobalState;
-    tab: TabState;
-}
+export interface SidebarStateAccessors {
+    global: GlobalStateAccessors;
+    tab: TabStateAccessors;
+};
+
+export interface GuideBuilderStateAccessors {
+    global: GlobalStateAccessors;
+    tab: TabStateAccessors;
+};
 
 export interface Instance {
-    portName: PortName;
-    tabId: TabId;
     connected: boolean;
-    channel: Channel;
 };
 
 export interface GuideBuilderInstance extends Instance {};
@@ -35,24 +48,14 @@ export interface SidebarInstance extends Instance {};
 
 export interface StoredCache {
     globalState: GlobalState;
-    tabId_to_tabState: [TabId, TabState][];
-    tabId_to_guideBuilderInstance: [TabId, GuideBuilderInstance][];
-    tabId_to_sidebarInstance: [TabId, SidebarInstance][];
-    portName_to_tabId: [PortName, TabId][];
+    tabStates: [TabId, TabState][];
+    guideBuilders: [PortName, GuideBuilderInstance][];
+    sidebars: [PortName, SidebarInstance][];
 };
-
-export type TabId_To_GuideBuilderInstance = Map<TabId, GuideBuilderInstance>;
-export type TabId_To_SidebarInstance = Map<TabId, SidebarInstance>;
-
-export type TabId_To_Instance =
-    TabId_To_GuideBuilderInstance | TabId_To_SidebarInstance;
-
-export type PortName_To_TabId = Map<PortName, TabId>;
 
 export interface Cache {
     globalState: GlobalState;
     tabId_to_tabState: Map<TabId, TabState>;
-    tabId_to_guideBuilderInstance: TabId_To_GuideBuilderInstance;
-    tabId_to_sidebarInstance: TabId_To_SidebarInstance;
-    portName_to_tabId: PortName_To_TabId;
+    portName_to_guideBuilderInstance: Map<PortName, GuideBuilderInstance>;
+    portName_to_sidebarInstance: Map<PortName, SidebarInstance>;
 };

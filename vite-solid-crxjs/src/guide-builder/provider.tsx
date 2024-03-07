@@ -4,39 +4,79 @@ import {
     createSignal,
     createEffect
 } from 'solid-js';
-import { createStore } from 'solid-js/store';
-import type { Action } from '../types/extra';
 import Port from '../utils/port';
-import { GuideBuilderProviderState } from '../types/state';
-import { defaultGuideBuilderProviderState } from '../types/defaults';
+import type { GuideBuilderStateAccessors, GlobalClick } from '../types/state';
+import { useGlobalClicks } from '../signals/global/clicks';
+import { useGlobalRecording } from '../signals/global/recording';
+import { useTabCurrentStep } from '../signals/tab/current-step';
+import { useTabPreviewing } from '../signals/tab/previewing';
 
 type GuideBuilderContextValue = [
-    state: GuideBuilderProviderState,
+    state: GuideBuilderStateAccessors,
     actions: {
-        addGlobalAction: (action: Action) => void,
-        incrementCurrentStep: () => void,
+        global: {
+            addGlobalClick: (click: GlobalClick) => void,
+        },
+        tab: {
+            incrementTabCurrentStep: () => void,
+        },
     },
 ];
 
-
 const GuideBuilderContext = createContext<GuideBuilderContextValue>([
-    defaultGuideBuilderProviderState,
     {
-        addGlobalAction: () => undefined,
-        incrementCurrentStep: () => undefined,
+        global: {
+            globalRecording: () => false,
+            globalClicks: () => [],
+        },
+        tab: {
+            tabPreviewing: () => false,
+            tabCurrentStep: () => 0,
+        },
+    },
+    {
+        global: {
+            addGlobalClick: () => undefined,
+        },
+        tab: {
+            incrementTabCurrentStep: () => undefined,
+        },
     },
 ]);
 
 export function GuideBuilderProvider(props: { children: any }) {
-    const [state, setState] = createStore(defaultGuideBuilderProviderState);
     const [reconectionAttempts, setReconnectionAttempts] = createSignal(0);
-    const backgroundPort = new Port('gc', setReconnectionAttempts);
+    const backgroundPort = new Port('gb', setReconnectionAttempts);
+
+    const {
+        globalRecording,
+        initGlobalRecording,
+    } = useGlobalRecording(backgroundPort);
+
+    const { 
+        globalClicks,
+        initGlobalClicks,
+        addGlobalClick, 
+    } = useGlobalClicks(backgroundPort);
+
+    const {
+        tabPreviewing,
+        initTabPreviewing,
+    } = useTabPreviewing(backgroundPort);
+
+    const {
+        tabCurrentStep,
+        initTabCurrentStep,
+        incrementTabCurrentStep,
+    } = useTabCurrentStep(backgroundPort);
+
     backgroundPort.setMessageListener('init', (msg) => {
-        if (msg.data) {
-            setState(msg.data);
-        } else {
-            setState(defaultGuideBuilderProviderState);
-        }
+        const state = msg.data;
+        initGlobalRecording(state.global.recording);
+        initGlobalClicks(state.global.clicks);
+        initTabPreviewing(state.tab.previewing);
+        initTabCurrentStep(state.tab.currentStep);
+
         setReconnectionAttempts(0);
     });
     createEffect(() => {
@@ -44,22 +84,13 @@ export function GuideBuilderProvider(props: { children: any }) {
     });
 
     const guideBuilder: GuideBuilderContextValue = [
-        state,
         {
-            addGlobalAction: (action: Action) => {
-                const key: ['global', 'actions', number] = [
-                    'global', 'actions', state.global.actions.length
-                ];
-                const value = action;
-                setState(...key, value);
-                backgroundPort.send({ type: 'update', data: { key, value, }});
-            },
-            incrementCurrentStep: () => {
-                const key: ['tab', 'currentStep'] = ['tab', 'currentStep'];
-                const value = (step: number) => step + 1;
-                setState(...key, value);
-                backgroundPort.send({ type: 'update', data: { key, value, }});
-            },
+            global: { globalRecording, globalClicks, },
+            tab: { tabPreviewing, tabCurrentStep, },
+        },
+        {
+            global: { addGlobalClick, },
+            tab: { incrementTabCurrentStep, }
         },
     ];
 

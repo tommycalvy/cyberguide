@@ -4,41 +4,85 @@ import {
     createSignal,
     createEffect
 } from 'solid-js';
-import { createStore } from 'solid-js/store';
 import Port from '../utils/port';
-import { SidebarProviderState } from '../types/state';
-import { defaultSidebarProviderState } from '../types/defaults';
+import type { SidebarStateAccessors } from '../types/state';
+import { useGlobalRecording } from '../signals/global/recording';
+import { useGlobalClicks } from '../signals/global/clicks';
+import { useTabPreviewing } from '../signals/tab/previewing';
+import { useTabCurrentStep } from '../signals/tab/current-step';
 
 type SidebarContextValue = [
-    state: SidebarProviderState,
+    state: SidebarStateAccessors,
     actions: {
-        startRecording: () => void,
-        stopRecording: () => void,
-        startPreview: () => void,
-        stopPreview: () => void,
+        global: {
+            startGlobalRecording: () => void,
+            stopGlobalRecording: () => void,
+        },
+        tab: {
+            startTabPreviewing: () => void,
+            stopTabPreviewing: () => void,
+        },
     },
 ];
 
 const SidebarContext = createContext<SidebarContextValue>([
-    defaultSidebarProviderState,
     {
-        startRecording: () => undefined,
-        stopRecording: () => undefined,
-        startPreview: () => undefined,
-        stopPreview: () => undefined,
+        global: {
+            globalRecording: () => false,
+            globalClicks: () => [],
+        },
+        tab: {
+            tabPreviewing: () => false,
+            tabCurrentStep: () => 0,
+        },
+    },
+    {
+        global: {
+            startGlobalRecording: () => undefined,
+            stopGlobalRecording: () => undefined,
+        },
+        tab: {
+            startTabPreviewing: () => undefined,
+            stopTabPreviewing: () => undefined,
+        },
     },
 ]);
 
 export function SidebarProvider(props: { children: any }) {
-    const [state, setState] = createStore(defaultSidebarProviderState);
     const [reconectionAttempts, setReconnectionAttempts] = createSignal(0);
     const backgroundPort = new Port('sb', setReconnectionAttempts);
+
+    const {
+        globalRecording,
+        initGlobalRecording,
+        startGlobalRecording,
+        stopGlobalRecording,
+    } = useGlobalRecording(backgroundPort);
+
+    const {
+        globalClicks,
+        initGlobalClicks,
+    } = useGlobalClicks(backgroundPort);
+
+    const {
+        tabPreviewing,
+        initTabPreviewing,
+        startTabPreviewing,
+        stopTabPreviewing,
+    } = useTabPreviewing(backgroundPort);
+
+    const {
+        tabCurrentStep,
+        initTabCurrentStep,
+    } = useTabCurrentStep(backgroundPort);
+
     backgroundPort.setMessageListener('init', (msg) => {
-        if (msg.data) {
-            setState(msg.data);
-        } else {
-            setState(defaultSidebarProviderState);
-        }
+        const state = msg.data;
+        initGlobalRecording(state.global.recording);
+        initGlobalClicks(state.global.clicks);
+        initTabPreviewing(state.tab.previewing);
+        initTabCurrentStep(state.tab.currentStep);
+
         setReconnectionAttempts(0);
     });
     createEffect(() => {
@@ -46,32 +90,13 @@ export function SidebarProvider(props: { children: any }) {
     });
 
     const sidebar: SidebarContextValue = [
-        state,
         {
-            startRecording: () => {
-                const key: ['global', 'recording'] = ['global', 'recording'];
-                const value = true;
-                setState(...key, value);
-                backgroundPort.send({ type: 'update', key, value });
-            },
-            stopRecording: () => {
-                const key: ['global', 'recording'] = ['global', 'recording'];
-                const value = false;
-                setState(...key, value);
-                backgroundPort.send({ type: 'update', key, value });
-            },
-            startPreview: () => {
-                const key: ['tab', 'previewing'] = ['tab', 'previewing'];
-                const value = true;
-                setState(...key, value);
-                backgroundPort.send({ type: 'update', key, value });
-            },
-            stopPreview: () => {
-                const key: ['tab', 'previewing'] = ['tab', 'previewing'];
-                const value = false;
-                setState(...key, value);
-                backgroundPort.send({ type: 'update', key, value });
-            },
+            global: { globalRecording, globalClicks, },
+            tab: { tabPreviewing, tabCurrentStep, },
+        },
+        {
+            global: { startGlobalRecording, stopGlobalRecording, },
+            tab: { startTabPreviewing, stopTabPreviewing, },
         },
     ];
 

@@ -44,7 +44,7 @@ export class ChannelListener {
             if (connectListener) {
                 connectListener(port);
             } else {
-                console.warn(`No connect listener for channel: ${channelName}`);
+                console.warn(`No connectListener for channel: ${channelName}`);
             }
 
             port.onMessage.addListener((msg, port) => {
@@ -167,7 +167,7 @@ export class Channel {
         });
     }
 
-    sendToAll(msg: Message, exceptPortName: string) {
+    sendToAll(msg: Message, exceptPortName: string = "") {
         const channel = this.#channelListener.getChannel(this.#channelName);
         if (!channel) {
             console.error(`No channel with name: ${this.#channelName}`);

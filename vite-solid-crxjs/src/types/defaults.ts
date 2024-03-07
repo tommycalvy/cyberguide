@@ -1,39 +1,21 @@
 import { 
     GlobalState, 
     TabState,
-    SidebarProviderState,
-    GuideBuilderProviderState,
-    Cache,
-    GuideBuilderInstance,
-    SidebarInstance,
+    GlobalClick,
 } from './state';
-import { PortName } from '../types/messaging';
-import { TabId } from '../types/extra';
+
+export const defaultGlobalClicks: GlobalClick[] = [];
+export const defaultGlobalRecording: boolean = false;
 
 export const defaultGlobalState: GlobalState = {
-    recording: false,
-    actions: [],
+    recording: defaultGlobalRecording,
+    clicks: defaultGlobalClicks,
 };
+
+export const defaultTabPreviewing: boolean = false;
+export const defaultTabCurrentStep: number = 0;
 
 export const defaultTabState: TabState = {
-    previewing: false,
-    currentStep: 0,
-};
-
-export const defaultSidebarProviderState: SidebarProviderState = {
-    global: defaultGlobalState,
-    tab: defaultTabState,
-};
-
-export const defaultGuideBuilderProviderState: GuideBuilderProviderState = {
-    global: defaultGlobalState,
-    tab: defaultTabState,
-};
-
-export const defaultCache: Cache = {
-    globalState: defaultGlobalState,
-    tabId_to_tabState: new Map<TabId,TabState>(),
-    tabId_to_guideBuilderInstance: new Map<TabId,GuideBuilderInstance>(),
-    tabId_to_sidebarInstance: new Map<TabId,SidebarInstance>(),
-    portName_to_tabId: new Map<PortName,TabId>(),
+    previewing: defaultTabPreviewing,
+    currentStep: defaultTabCurrentStep,
 };
