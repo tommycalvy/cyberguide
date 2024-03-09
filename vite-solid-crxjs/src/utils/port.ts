@@ -6,6 +6,7 @@ class Port {
 
     channelName: string;
     portName: string | null;
+    tabId: number | null;
     backgroundPort: browser.Runtime.Port | null;
     messageListeners: Map<MessageType, (msg: Message) => void>;
     setReconnectionAttempts: Setter<number>;
@@ -21,24 +22,14 @@ class Port {
         this.channelName = channelName;
         this.setReconnectionAttempts = setReconnectionAttempts;
         this.portName = null;
+        this.tabId = null;
         this.backgroundPort = null;
         this.messageListeners = new Map();
         this.connect(); 
     }
 
-    async generatePortName(): Promise<string> {
-        const queryOptions = { active: true, lastFocusedWindow: true };
-        const tab = await browser.tabs.query(queryOptions);
-        const tabId = tab[0].id;
-        if (!tabId) {
-            throw new Error('No active tab. Cannot generate port name');
-        }
-        return this.channelName + '-' + tabId;
-    }
-
-    async connect() {
-        const portName = await this.generatePortName();
-        this.portName = portName;
+    connect() {
+        const portName = this.channelName + '-cyberguide';
         this.backgroundPort = browser.runtime.connect({ name: portName });
         this.backgroundPort.onMessage.addListener((msg) => {
             console.log(portName, 'received message:', msg);
@@ -46,7 +37,7 @@ class Port {
             if (messageListener) {
                 messageListener(msg);
             } else {
-                console.warn('No listener for message type:', msg.type);
+                throw new Error('No listener for message type:', msg.type);
             }
         });
         this.backgroundPort.onDisconnect.addListener(() => {
@@ -76,16 +67,20 @@ class Port {
         this.messageListeners.set(messageType, messageListener);
     }
 
-    removeMessageListener(messageType: MessageType): boolean {
-        return this.messageListeners.delete(messageType);
+    removeMessageListener(messageType: MessageType): Error | null {
+        const removed = this.messageListeners.delete(messageType);
+        if (removed) {
+            return null;
+        }
+        return new Error('No listener for message type: ' + messageType);
     }
 
-    send(msg: Message): void {
+    send(msg: Message): Error | null {
         if (this.backgroundPort) {
             this.backgroundPort.postMessage(msg);
-        } else {
-            console.error('Port is not connected');
+            return null;
         }
+        return new Error('Port is not connected');
     }
 }
 

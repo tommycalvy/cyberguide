@@ -1,6 +1,6 @@
 import browser from 'webextension-polyfill';
 import { Channel, ChannelListener } from '../src/utils/channel';
-import gbScriptPath from '../src/guide-builder/index?script';
+import renderGuideBuilder from '../src/guide-builder/index';
 import type { 
     GlobalState, 
     TabState,
@@ -19,8 +19,8 @@ class Background {
 
     globalState: GlobalState;
     tabStates: Map<TabId, TabState>;
-    guideBuilders: Map<PortName, GuideBuilderInstance>;
-    sidebars: Map<PortName, SidebarInstance>;
+    guideBuilders: Map<TabId, GuideBuilderInstance>;
+    sidebars: Map<TabId, SidebarInstance>;
 
     constructor() {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
@@ -112,17 +112,17 @@ class Background {
                 console.error('No tab.id found');
                 return;
             }
-            const guideBuilder = this.guideBuilders.get('gb-' + tabId);
+            const guideBuilder = this.guideBuilders.get(tabId);
             if (!guideBuilder || !guideBuilder.connected) {
                 browser.scripting.executeScript({
                     target: { tabId },
-                    files: [gbScriptPath],
+                    func: renderGuideBuilder,
                 });
             }
 
             chrome.sidePanel.setOptions({
                 tabId,
-                path: 'src/sidebar/index.html',
+                path: `src/sidebar/index.html?tabId=${tabId}`,
                 enabled: true,
             });
             await chrome.sidePanel.open({ tabId });
@@ -132,14 +132,14 @@ class Background {
     onTabUpdated() {
         browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
             if (changeInfo.status === 'complete') {
-                const guideBuilder = this.guideBuilders.get('gb-' + tabId);
+                const guideBuilder = this.guideBuilders.get(tabId);
                 if (!guideBuilder) {
                     return;
                 }
                 if (!guideBuilder.connected) {
                     browser.scripting.executeScript({
                         target: { tabId },
-                        files: [gbScriptPath],
+                        func: renderGuideBuilder,
                     });
                 }
             }
@@ -153,28 +153,35 @@ class Background {
     ) {
         channel.onConnect((port) => {
             const portName = port.name;
-            let instance = instances.get(portName);
+            let senderTabId = port.sender?.tab?.id;
+            if (!senderTabId) {
+                console.log('No tabId found in port.sender.tab.id');
+                return;
+            }
+            let instance = instances.get(senderTabId);
             if (!instance) {
                 instance = {
+                    portName,
                     connected: true,
                 };
-                instances.set(portName, instance);
+                instances.set(senderTabId, instance);
             } else {
                 instance.connected = true;
             }
             this.addInstanceToStorage(instanceName, instance);
 
-            const tabId = portName.split('-')[1];
-            let tabState = this.tabStates.get(tabId);
+            //const tabId = portName.split('-')[1];
+            let tabState = this.tabStates.get(senderTabId);
             if (!tabState) {
-                this.tabStates.set(tabId, defaultTabState);
+                this.tabStates.set(senderTabId, defaultTabState);
                 tabState = defaultTabState;
-                this.addTabStateToStorage(tabId, tabState);
+                this.addTabStateToStorage(senderTabId, tabState);
             }
 
             channel.send(portName, { type: 'init', data: {
                 global: this.globalState,
                 tab: tabState,
+                tabId: senderTabId,
             }});
         });
     }

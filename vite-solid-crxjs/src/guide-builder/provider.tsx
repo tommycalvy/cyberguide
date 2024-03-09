@@ -77,6 +77,7 @@ export function GuideBuilderProvider(props: { children: any }) {
         initTabPreviewing(state.tab.previewing);
         initTabCurrentStep(state.tab.currentStep);
 
+
         setReconnectionAttempts(0);
     });
     createEffect(() => {

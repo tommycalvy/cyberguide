@@ -1,5 +1,4 @@
-import type { TabId } from '../types/extra';
-import type { PortName } from '../types/messaging';
+import type { TabId, PortName } from '../types/messaging';
 import { Channel } from '../utils/channel';
 import type { Accessor } from 'solid-js';
 
@@ -39,6 +38,7 @@ export interface GuideBuilderStateAccessors {
 };
 
 export interface Instance {
+    portName: PortName;
     connected: boolean;
 };
 
@@ -49,13 +49,6 @@ export interface SidebarInstance extends Instance {};
 export interface StoredCache {
     globalState: GlobalState;
     tabStates: [TabId, TabState][];
-    guideBuilders: [PortName, GuideBuilderInstance][];
-    sidebars: [PortName, SidebarInstance][];
-};
-
-export interface Cache {
-    globalState: GlobalState;
-    tabId_to_tabState: Map<TabId, TabState>;
-    portName_to_guideBuilderInstance: Map<PortName, GuideBuilderInstance>;
-    portName_to_sidebarInstance: Map<PortName, SidebarInstance>;
+    guideBuilders: [TabId, GuideBuilderInstance][];
+    sidebars: [TabId, SidebarInstance][];
 };
