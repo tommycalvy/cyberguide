@@ -1,13 +1,10 @@
 import { createSignal } from 'solid-js';
 import Port from '../../utils/port';
-import { Channel } from '../../utils/channel';
-import browser from 'webextension-polyfill';
+import { defaultTabCurrentStep } from '../../types/defaults';
 
-export const defaultTabCurrentStep = 0;
-const key = 'tab-current-step';
-const msgType = 'update-' + key;
+const messageType = 'tab-current-step';
 
-export function useTabCurrentStep(backgroundPort: Port) {
+export default function useTabCurrentStep(backgroundPort: Port) {
     const [tabCurrentStep, setTabCurrentStep] = createSignal(
         defaultTabCurrentStep
     );
@@ -16,52 +13,31 @@ export function useTabCurrentStep(backgroundPort: Port) {
         if (tabCurrentStep) {
             setTabCurrentStep(tabCurrentStep);
         } else {
-            console.error('On init tab current step not found');
+            throw new Error('On init tabCurrentStep not found');
         }
     }
 
-    backgroundPort.setMessageListener(msgType, (msg) => {
+    backgroundPort.setMessageListener(messageType, (msg) => {
         if (msg.data) {
-            setTabCurrentStep(msg.data);
+            setTabCurrentStep((currentStep: number) => currentStep + 1);
         } else {
-            console.error('On update tab current step not found');
+            throw new Error('On update tabCurrentStep not found in message');
         }
     });
 
     function incrementTabCurrentStep() {
         setTabCurrentStep((currentStep: number) => currentStep + 1);
-        backgroundPort.send({ 
-            type: msgType, 
-            data: tabCurrentStep() + 1,
+        const err = backgroundPort.send({ 
+            type: messageType, 
+            data: true, //Sending true to increment the current step
         });
+        if (err) {
+            throw new Error(
+                'backgroundPort.send failed in incrementTabCurrentStep', 
+                { cause: err },
+            );
+        }
     }
 
     return { tabCurrentStep, initTabCurrentStep, incrementTabCurrentStep };
-}
-
-export function updateTabCurrentStepListener(channels: Channel[]) {
-    channels.forEach((channel) => {
-        channel.onMessage(msgType, (port, msg) => {
-            const portName = port.name;
-            channel.sendToAll(msg, portName);
-            browser.storage.local.get('tabStates').then((r) => {
-                const tabStates = r.tabStates;
-                if (!Array.isArray(tabStates)) {
-                    throw new Error('tabStates not found in storage');
-                }
-                if (tabStates.length === 0) {
-                    throw new Error('tabStates is empty');
-                }
-
-                const index = tabStates.findIndex(
-                    (tabState) => tabState[0] === portName
-                );
-                if (index === -1) {
-                    throw new Error('tabState not found');
-                }
-                tabStates[index][1].currentStep = msg.data;
-                browser.storage.local.set({ tabStates });
-            });
-        });
-    });
 }

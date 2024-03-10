@@ -1,6 +1,6 @@
 import browser from 'webextension-polyfill';
-import { Channel, ChannelListener } from '../src/utils/channel';
-import renderGuideBuilder from '../src/guide-builder/index';
+import { ChannelListener, Channel } from '../src/utils/channel';
+import guideBuilderScriptPath from '../src/guide-builder/index';
 import type { 
     GlobalState, 
     TabState,
@@ -26,8 +26,8 @@ class Background {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
         this.channelListener = new ChannelListener();
-        this.sidebarChannel = new Channel('sb', this.channelListener);
-        this.guideBuilderChannel = new Channel('gb', this.channelListener);
+        this.sidebarChannel = this.channelListener.createChannel('sb');
+        this.guideBuilderChannel = this.channelListener.createChannel('gb');
 
         this.globalState = defaultGlobalState;
         this.tabStates = new Map();

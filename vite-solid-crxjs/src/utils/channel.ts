@@ -10,7 +10,7 @@ import type {
 
 
 /** Class that creates a runtime.onConnect listener and returns the ports */
-export default class ChannelListener {
+export class ChannelListener {
     #channels: Map<ChannelName, MessagingChannel>;
     allowedChannels: string[];
 
@@ -151,7 +151,7 @@ export default class ChannelListener {
         });
     }
 
-    newChannel(channelName: string): Channel {
+    createChannel(channelName: string): Channel {
         return new Channel(channelName, this);
     }
 
@@ -228,7 +228,7 @@ export default class ChannelListener {
     }
 }
 
-class Channel {
+export class Channel {
 
     #channelName: string;
     #channelListener: ChannelListener;

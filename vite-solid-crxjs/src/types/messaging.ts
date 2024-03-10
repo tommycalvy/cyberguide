@@ -2,6 +2,8 @@ import browser from 'webextension-polyfill';
 
 export type TabId = number;
 
+export type PortName = string;
+
 export type MessageType = string;
 
 export interface Message {

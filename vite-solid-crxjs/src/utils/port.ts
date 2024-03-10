@@ -6,7 +6,7 @@ class Port {
 
     channelName: string;
     portName: string | null;
-    tabId: number | null;
+    tabId: string | null;
     backgroundPort: browser.Runtime.Port | null;
     messageListeners: Map<MessageType, (msg: Message) => void>;
     setReconnectionAttempts: Setter<number>;
@@ -14,6 +14,7 @@ class Port {
     constructor(
         channelName: string,
         setReconnectionAttempts: Setter<number>,
+        tabId?: string,
     ) {
         // If channel is not 2 characters long, throw an error
         if (channelName.length !== 2) {
@@ -21,18 +22,24 @@ class Port {
         }
         this.channelName = channelName;
         this.setReconnectionAttempts = setReconnectionAttempts;
-        this.portName = null;
         this.tabId = null;
+        this.portName = null;
+        if (tabId) {
+            this.tabId = tabId;
+            this.portName = this.channelName + '-' + tabId;
+        }
         this.backgroundPort = null;
         this.messageListeners = new Map();
         this.connect(); 
     }
 
     connect() {
-        const portName = this.channelName + '-cyberguide';
-        this.backgroundPort = browser.runtime.connect({ name: portName });
+        if (this.portName === null) {
+            this.portName = this.channelName + '-cyberguide';
+        }
+        this.backgroundPort = browser.runtime.connect({ name: this.portName });
         this.backgroundPort.onMessage.addListener((msg) => {
-            console.log(portName, 'received message:', msg);
+            console.log(this.portName, 'received message:', msg);
             const messageListener = this.messageListeners.get(msg.type);
             if (messageListener) {
                 messageListener(msg);
@@ -41,7 +48,7 @@ class Port {
             }
         });
         this.backgroundPort.onDisconnect.addListener(() => {
-            console.log(portName, 'disconnected');
+            console.log(this.portName, 'disconnected');
             this.reconnect();
         });
     }

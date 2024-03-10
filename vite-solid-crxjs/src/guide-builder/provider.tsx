@@ -4,15 +4,31 @@ import {
     createSignal,
     createEffect
 } from 'solid-js';
+import type { Accessor } from 'solid-js';
 import Port from '../utils/port';
-import type { GuideBuilderStateAccessors, GlobalClick } from '../types/state';
-import { useGlobalClicks } from '../signals/global/clicks';
-import { useGlobalRecording } from '../signals/global/recording';
-import { useTabCurrentStep } from '../signals/tab/current-step';
-import { useTabPreviewing } from '../signals/tab/previewing';
+import type { GlobalClick } from '../types/state';
+import useGlobalClicks from '../signals/global/clicks';
+import useGlobalRecording from '../signals/global/recording';
+import useTabCurrentStep from '../signals/tab/current-step';
+import useTabPreviewing from '../signals/tab/previewing';
+import {
+    defaultGlobalRecording,
+    defaultGlobalClicks,
+    defaultTabPreviewing,
+    defaultTabCurrentStep,
+} from '../types/defaults';
 
 type GuideBuilderContextValue = [
-    state: GuideBuilderStateAccessors,
+    state: {
+        global: {
+            globalRecording: Accessor<boolean>,
+            globalClicks: Accessor<GlobalClick[]>,
+        },
+        tab: {
+            tabPreviewing: Accessor<boolean>,
+            tabCurrentStep: Accessor<number>,
+        },
+    },
     actions: {
         global: {
             addGlobalClick: (click: GlobalClick) => void,
@@ -26,12 +42,12 @@ type GuideBuilderContextValue = [
 const GuideBuilderContext = createContext<GuideBuilderContextValue>([
     {
         global: {
-            globalRecording: () => false,
-            globalClicks: () => [],
+            globalRecording: () => defaultGlobalRecording,
+            globalClicks: () => defaultGlobalClicks,
         },
         tab: {
-            tabPreviewing: () => false,
-            tabCurrentStep: () => 0,
+            tabPreviewing: () => defaultTabPreviewing,
+            tabCurrentStep: () => defaultTabCurrentStep,
         },
     },
     {

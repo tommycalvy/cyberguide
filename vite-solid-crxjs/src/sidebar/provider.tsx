@@ -4,15 +4,31 @@ import {
     createSignal,
     createEffect
 } from 'solid-js';
+import type { Accessor } from 'solid-js';
 import Port from '../utils/port';
-import type { SidebarStateAccessors } from '../types/state';
-import { useGlobalRecording } from '../signals/global/recording';
-import { useGlobalClicks } from '../signals/global/clicks';
-import { useTabPreviewing } from '../signals/tab/previewing';
-import { useTabCurrentStep } from '../signals/tab/current-step';
+import type { GlobalClick } from '../types/state';
+import {
+    defaultGlobalRecording,
+    defaultGlobalClicks,
+    defaultTabPreviewing,
+    defaultTabCurrentStep
+} from '../types/defaults';
+import useGlobalRecording from '../signals/global/recording';
+import useGlobalClicks from '../signals/global/clicks';
+import useTabPreviewing from '../signals/tab/previewing';
+import useTabCurrentStep from '../signals/tab/current-step';
 
 type SidebarContextValue = [
-    state: SidebarStateAccessors,
+    state: {
+        global: {
+            globalRecording: Accessor<boolean>,
+            globalClicks: Accessor<GlobalClick[]>,
+        },
+        tab: {
+            tabPreviewing: Accessor<boolean>,
+            tabCurrentStep: Accessor<number>,
+        },
+    },
     actions: {
         global: {
             startGlobalRecording: () => void,
@@ -28,12 +44,12 @@ type SidebarContextValue = [
 const SidebarContext = createContext<SidebarContextValue>([
     {
         global: {
-            globalRecording: () => false,
-            globalClicks: () => [],
+            globalRecording: () => defaultGlobalRecording,
+            globalClicks: () => defaultGlobalClicks,
         },
         tab: {
-            tabPreviewing: () => false,
-            tabCurrentStep: () => 0,
+            tabPreviewing: () => defaultTabPreviewing,
+            tabCurrentStep: () => defaultTabCurrentStep,
         },
     },
     {
@@ -50,7 +66,11 @@ const SidebarContext = createContext<SidebarContextValue>([
 
 export function SidebarProvider(props: { children: any }) {
     const [reconectionAttempts, setReconnectionAttempts] = createSignal(0);
-    const backgroundPort = new Port('sb', setReconnectionAttempts);
+
+    const tabId = location.search.split('tabId=')[1];
+    if (!tabId) throw new Error('tabId not found');
+
+    const backgroundPort = new Port('sb', setReconnectionAttempts, tabId);
 
     const {
         globalRecording,
