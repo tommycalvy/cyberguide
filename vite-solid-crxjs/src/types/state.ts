@@ -1,4 +1,4 @@
-import type { TabId, PortName } from '../types/messaging';
+import type { TabId } from '../types/messaging';
 
 export interface GlobalClick {
     url: string;
@@ -16,7 +16,6 @@ export interface TabState {
 };
 
 export interface Instance {
-    portName: PortName;
     connected: boolean;
 };
 

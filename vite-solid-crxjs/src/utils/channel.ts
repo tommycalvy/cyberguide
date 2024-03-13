@@ -6,16 +6,21 @@ import type {
     PortListener,
     MessageListener,
     TabId,
+    MessageType,
+    PortDescriptor,
+    GlobalListener,
 } from "../types/messaging";
 
 
 /** Class that creates a runtime.onConnect listener and returns the ports */
 export class ChannelListener {
     #channels: Map<ChannelName, MessagingChannel>;
+    #globalListeners: Map<MessageType, GlobalListener>;
     allowedChannels: string[];
 
     constructor() {
         this.#channels = new Map();
+        this.#globalListeners = new Map();
         this.allowedChannels = ["sb", "gb"];
         this.startListening();
     }
@@ -46,7 +51,7 @@ export class ChannelListener {
                 });
             }
 
-            const onConnectErr = this.onConnectListener(port, channel);
+            const onConnectErr = this.onConnectListener(port, channel, tabId);
             if (onConnectErr) {
                 port.disconnect();
                 throw new Error('channelListener.onConnectListener failed', { 
@@ -60,20 +65,10 @@ export class ChannelListener {
         });
     }
 
-    onConnectListener(port: browser.Runtime.Port, channel: MessagingChannel)
-    : Error | null {
-        const connectListener = channel.connectListener;
-        if (connectListener) {
-            connectListener(port);
-            return null;
-        }
-        return new Error(`No connectListener for channel: ${channel.name}`);
-    }
-
     addPortToChannel(
         channel: MessagingChannel,
         port: browser.Runtime.Port,
-        tabId: number,
+        tabId: TabId,
     ): Error | null {
         const messagingPort = channel.ports.get(tabId);
         if (messagingPort) {
@@ -116,6 +111,19 @@ export class ChannelListener {
         return new Error(`No listeners for channel: ${channelName}`);
     }
 
+    onConnectListener(
+        port: browser.Runtime.Port,
+        channel: MessagingChannel,
+        tabId: TabId,
+    )
+    : Error | null {
+        const connectListener = channel.connectListener;
+        if (connectListener) {
+            connectListener(port, tabId);
+            return null;
+        }
+        return new Error(`No connectListener for channel: ${channel.name}`);
+    }
 
     onMessageListener(
         port: browser.Runtime.Port,
@@ -127,11 +135,20 @@ export class ChannelListener {
                 throw new Error(`No msg type from port: ${port.name}`);
             }
             console.log(channel.name, ": ", msg.type);
+            let hasListener = false;
             const messageListener = channel.messageListeners.get(msg.type);
             if (messageListener) {
-                return messageListener(port, msg, tabId);
+                hasListener = true;
+                messageListener(port, msg, tabId);
             }
-            throw new Error(`No messageListener for msgType: ${msg.type}`);
+            const globalListener = this.#globalListeners.get(msg.type);
+            if (globalListener) {
+                hasListener = true;
+                globalListener(port, msg, tabId, channel.name);
+            }
+            if (!hasListener) {
+                throw new Error(`No listener for msg type: ${msg.type}`);
+            }
         });
     }
 
@@ -145,7 +162,7 @@ export class ChannelListener {
             channel.ports.delete(tabId);
             const disconnectListener = channel.disconnectListener;
             if (disconnectListener) {
-                return disconnectListener(port);
+                return disconnectListener(port, tabId);
             }
             throw new Error(`No disconnectLisnr for channel: ${channel.name}`);
         });
@@ -154,8 +171,6 @@ export class ChannelListener {
     createChannel(channelName: string): Channel {
         return new Channel(channelName, this);
     }
-
-    //TODO: add Global Listener so that all ports can listen to a message
 
     addChannel(channelName: string) {
         let channel: MessagingChannel = {
@@ -166,6 +181,13 @@ export class ChannelListener {
             disconnectListener: null,
         };
         this.#channels.set(channelName, channel);
+    }
+
+    setGlobalListener(
+        messageType: MessageType,
+        globalListener: GlobalListener,
+    ) {
+        this.#globalListeners.set(messageType, globalListener);
     }
 
 
@@ -192,7 +214,7 @@ export class ChannelListener {
 
     setMessageListener(
         channelName: string,
-        messageType: string,
+        messageType: MessageType,
         messageListener: MessageListener,
     ): Error | null {
         const channel = this.#channels.get(channelName);
@@ -226,6 +248,41 @@ export class ChannelListener {
         channel.connectListener = connectListener;
         return null;
     }
+
+    sendToAll(
+        msg: Message,
+        exceptPort?: PortDescriptor,
+    ) {
+        this.#channels.forEach((channel) => {
+            channel.ports.forEach((messagingPort) => {
+                if (
+                    channel.name !== exceptPort?.channelName &&
+                    messagingPort.tabId !== exceptPort?.tabId
+                ) {
+                    messagingPort.port.postMessage(msg);
+                }
+            });
+        });
+    }
+
+    sendToTab(
+        tabId: number,
+        msg: Message,
+        exceptChannel?: ChannelName,
+    ): Error | null {
+        this.#channels.forEach((channel) => {
+            if (channel.name !== exceptChannel) {
+                const messagingPort = channel.ports.get(tabId);
+                if (messagingPort) {
+                    messagingPort.port.postMessage(msg);
+                } else {
+                    return new Error(`No port ${channel.name}-${tabId}`);
+                }
+            }
+        });
+        return null;
+    }
+
 }
 
 export class Channel {
@@ -264,7 +321,25 @@ export class Channel {
         return null;
     }
 
-    onMessage(messageType: string, messageListener: MessageListener)
+    sendGlobal(msg: Message, exceptPort?: PortDescriptor) {
+        this.#channelListener.sendToAll(msg, exceptPort);
+    }
+
+    sendToTab(tabId: TabId, msg: Message) {
+        const err = this.#channelListener.sendToTab(
+            tabId, 
+            msg,
+            this.#channelName
+        );
+        if (err) {
+            return new Error('channel.sendToTab failed', { cause: err });
+        }
+        return null;
+    }
+
+
+
+    onMessage(messageType: MessageType, messageListener: MessageListener)
     : Error | null {
         const err = this.#channelListener.setMessageListener(
             this.#channelName,

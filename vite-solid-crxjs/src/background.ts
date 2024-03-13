@@ -1,6 +1,6 @@
 import browser from 'webextension-polyfill';
 import { ChannelListener, Channel } from '../src/utils/channel';
-import guideBuilderScriptPath from '../src/guide-builder/index';
+import guideBuilderScriptPath from '../src/guide-builder/index?script';
 import type { 
     GlobalState, 
     TabState,
@@ -8,7 +8,7 @@ import type {
     SidebarInstance,
     StoredCache,
 } from '../src/types/state';
-import type { TabId, PortName } from '../src/types/messaging';
+import type { TabId } from '../src/types/messaging';
 import { defaultGlobalState, defaultTabState } from '../src/types/defaults';
 
 class Background {
@@ -49,29 +49,12 @@ class Background {
             this.guideBuilderChannel
         );
         
-        const channels = [this.sidebarChannel, this.guideBuilderChannel];
+        this.onMessageUpdateGlobalVar('recording');
 
-        const globalVarKeys = ['recording'];
-        globalVarKeys.forEach((key) => {
-            channels.forEach((channel) => {
-                this.onMessageUpdateGlobalVar(channel, channels, key);
-            });
-        });
+        this.onMessageUpdateGlobalArray('clicks');
 
-        const globalArrayKeys = ['clicks'];
-        globalArrayKeys.forEach((key) => {
-            channels.forEach((channel) => {
-                this.onMessageUpdateGlobalArray(channel, channels, key);
-            });
-        });
-
-        const tabStateKeys = ['previewing', 'currentStep'];
-        tabStateKeys.forEach((key) => {
-            channels.forEach((channel) => {
-                this.onMessageUpdateTabState(channel, key);
-            });
-        });
-
+        this.onMessageUpdateTabState('previewing');
+        this.onMessageUpdateTabState('currentStep');
     }
 
     initCache() {
@@ -116,7 +99,7 @@ class Background {
             if (!guideBuilder || !guideBuilder.connected) {
                 browser.scripting.executeScript({
                     target: { tabId },
-                    func: renderGuideBuilder,
+                    files: [guideBuilderScriptPath],
                 });
             }
 
@@ -139,7 +122,7 @@ class Background {
                 if (!guideBuilder.connected) {
                     browser.scripting.executeScript({
                         target: { tabId },
-                        func: renderGuideBuilder,
+                        files: [guideBuilderScriptPath],
                     });
                 }
             }
@@ -151,37 +134,28 @@ class Background {
         instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
         channel: Channel,
     ) {
-        channel.onConnect((port) => {
-            const portName = port.name;
-            let senderTabId = port.sender?.tab?.id;
-            if (!senderTabId) {
-                console.log('No tabId found in port.sender.tab.id');
-                return;
-            }
-            let instance = instances.get(senderTabId);
+        channel.onConnect((port, tabId) => {
+            let instance = instances.get(tabId);
             if (!instance) {
                 instance = {
-                    portName,
                     connected: true,
                 };
-                instances.set(senderTabId, instance);
+                instances.set(tabId, { connected: true });
             } else {
                 instance.connected = true;
             }
             this.addInstanceToStorage(instanceName, instance);
 
-            //const tabId = portName.split('-')[1];
-            let tabState = this.tabStates.get(senderTabId);
+            let tabState = this.tabStates.get(tabId);
             if (!tabState) {
-                this.tabStates.set(senderTabId, defaultTabState);
                 tabState = defaultTabState;
-                this.addTabStateToStorage(senderTabId, tabState);
+                this.tabStates.set(tabId, tabState);
+                this.addTabStateToStorage(tabId, tabState);
             }
 
-            channel.send(portName, { type: 'init', data: {
+            port.postMessage({ type: 'init', data: {
                 global: this.globalState,
                 tab: tabState,
-                tabId: senderTabId,
             }});
         });
     }
@@ -218,71 +192,73 @@ class Background {
     }
 
     onMessageUpdateGlobalVar(
-        channel: Channel,
-        channels: Channel[],
         key: string
     ) {
-        channel.onMessage('global-' + key, (port, msg) => {
-            channels.forEach((channel) => {
-                channel.sendToAll(msg, port.name);
-            });
-            browser.storage.local.get('globalState').then((r) => {
-                const globalState = r.globalState;
-                if (!globalState) {
-                    throw new Error('globalState not found in storage');
-                }
-                globalState[key] = msg.data;
-                browser.storage.local.set({ globalState });
-            });
-        });
+        this.channelListener.setGlobalListener(
+            'global-' + key, 
+            (_, msg, tabId, channelName) => {
+                this.channelListener.sendToAll(msg, { tabId, channelName });
+                browser.storage.local.get('globalState').then((r) => {
+                    const globalState = r.globalState;
+                    if (!globalState) {
+                        throw new Error('globalState not found in storage');
+                    }
+                    globalState[key] = msg.data;
+                    browser.storage.local.set({ globalState });
+                });
+            }
+        );
     }
 
     onMessageUpdateGlobalArray(
-        channel: Channel,
-        channels: Channel[],
         key: string
     ) {
-        channel.onMessage('global-' + key, (port, msg) => {
-            channels.forEach((channel) => {
-                channel.sendToAll(msg, port.name);
-            });
-            browser.storage.local.get('globalState').then((r) => {
-                const globalState = r.globalState;
-                if (!globalState) {
-                    throw new Error('globalState not found in storage');
-                }
-                if (!Array.isArray(globalState[key])) {
-                    throw new Error('global-' + key + ' is not an array');
-                }
-                globalState[key].push(msg.data);
-                browser.storage.local.set({ globalState });
-            });
-        });
+        this.channelListener.setGlobalListener(
+            'global-' + key, 
+            (_, msg, tabId, channelName) => {
+                this.channelListener.sendToAll(msg, { tabId, channelName });
+                browser.storage.local.get('globalState').then((r) => {
+                    const globalState = r.globalState;
+                    if (!globalState) {
+                        throw new Error('globalState not found in storage');
+                    }
+                    if (!Array.isArray(globalState[key])) {
+                        throw new Error('global-' + key + ' is not an array');
+                    }
+                    globalState[key].push(msg.data);
+                    browser.storage.local.set({ globalState });
+                });
+            }
+        );
     }
 
-    onMessageUpdateTabState(channel: Channel, key: string) {
-        channel.onMessage('tab-' + key, (port, msg) => {
-            const portName = port.name;
-            channel.sendToAll(msg, portName);
-            browser.storage.local.get('tabStates').then((r) => {
-                const tabStates = r.tabStates;
-                if (!Array.isArray(tabStates)) {
-                    throw new Error('tabStates not found in storage');
-                }
-                if (tabStates.length === 0) {
-                    throw new Error('tabStates is empty');
-                }
+    onMessageUpdateTabState(
+        key: string
+    ) {
+        this.channelListener.setGlobalListener(
+            'tab-' + key,
+            (_, msg, tabId, channelName) => {
+                this.channelListener.sendToTab(tabId, msg, channelName);
+                browser.storage.local.get('tabStates').then((r) => {
+                    const tabStates = r.tabStates;
+                    if (!Array.isArray(tabStates)) {
+                        throw new Error('tabStates not found in storage');
+                    }
+                    if (tabStates.length === 0) {
+                        throw new Error('tabStates is empty');
+                    }
 
-                const index = tabStates.findIndex(
-                    (tabState) => tabState[0] === portName
-                );
-                if (index === -1) {
-                    throw new Error('tabState not found');
-                }
-                tabStates[index][1][key] = msg.data;
-                browser.storage.local.set({ tabStates });
-            });
-        });
+                    const index = tabStates.findIndex(
+                        (tabState) => tabState[0] === tabId
+                    );
+                    if (index === -1) {
+                        throw new Error('tabState not found');
+                    }
+                    tabStates[index][1][key] = msg.data;
+                    browser.storage.local.set({ tabStates });
+                });
+            }
+        );
     }
 }
 
