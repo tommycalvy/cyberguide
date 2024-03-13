@@ -134,7 +134,7 @@ class Background {
         instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
         channel: Channel,
     ) {
-        channel.onConnect((port, tabId) => {
+        const err = channel.onConnect((port, tabId) => {
             let instance = instances.get(tabId);
             if (!instance) {
                 instance = {
@@ -158,6 +158,11 @@ class Background {
                 tab: tabState,
             }});
         });
+        if (err) {
+            return new Error('background.onConnectInitInstance failed', {
+                cause: err,
+            });
+        }
     }
 
     addTabStateToStorage(tabId: TabId, tabState: TabState) {
@@ -169,8 +174,9 @@ class Background {
             tabStates.push([tabId, tabState]);
             await browser.storage.local.set({ tabStates });
         }).catch((err) => {
-            console.error(browser.runtime.lastError);
-            console.error(err);
+            return new Error('background.addTabStateToStorage failed', {
+                cause: err,
+            });
         });
     }
 
@@ -186,8 +192,9 @@ class Background {
             instances.push(instance);
             await browser.storage.local.set({ [instanceName]: instances });
         }).catch((err) => {
-            console.error(browser.runtime.lastError);
-            console.error(err);
+            throw new Error('background.addInstanceToStorage failed', {
+                cause: err,
+            });
         });
     }
 
