@@ -25,6 +25,13 @@ export type GlobalListener = (
 ) => void;
 
 export type PortListener = (port: browser.Runtime.Port, tabId: TabId) => void;
+
+export type GlobalPortListener = (
+    port: browser.Runtime.Port,
+    tabId: TabId,
+    channelName: ChannelName,
+) => void;
+
 export type Failure = (err: Error) => void;
 
 export interface MessagingPort {

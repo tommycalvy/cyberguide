@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import { ChannelListener, Channel } from '../src/utils/channel';
+import GlobalListener from '../src/utils/global-listener';
 import guideBuilderScriptPath from '../src/guide-builder/index?script';
 import type { 
     GlobalState, 
@@ -8,46 +8,46 @@ import type {
     SidebarInstance,
     StoredCache,
 } from '../src/types/state';
-import type { TabId } from '../src/types/messaging';
+import type { TabId, PortName } from '../src/types/messaging';
 import { defaultGlobalState, defaultTabState } from '../src/types/defaults';
+import {
+    errorHandler,
+    BaseError,
+    Result,
+} from '../src/utils/error';
 
 class Background {
 
-    channelListener: ChannelListener;
-    sidebarChannel: Channel;
-    guideBuilderChannel: Channel;
+    globalListener: GlobalListener;
 
     globalState: GlobalState;
     tabStates: Map<TabId, TabState>;
     guideBuilders: Map<TabId, GuideBuilderInstance>;
     sidebars: Map<TabId, SidebarInstance>;
 
+    instances: Map<PortName, GuideBuilderInstance | SidebarInstance>;
+    portNames: Set<PortName>;
+
     constructor() {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
-        this.channelListener = new ChannelListener();
-        this.sidebarChannel = this.channelListener.createChannel('sb');
-        this.guideBuilderChannel = this.channelListener.createChannel('gb');
+        this.globalListener = new GlobalListener();
 
         this.globalState = defaultGlobalState;
         this.tabStates = new Map();
         this.sidebars = new Map();
         this.guideBuilders = new Map();
 
+        this.instances = new Map();
+        this.portNames = new Set();
+
         this.initCache();
         this.onActionClicked();
         this.onTabUpdated();
 
-        this.onConnectInitInstance(
-            'sidebars',
-            this.sidebars,
-            this.sidebarChannel
-        );
-        this.onConnectInitInstance(
-            'guideBuilders',
-            this.guideBuilders,
-            this.guideBuilderChannel
-        );
+        this.onConnectInitInstance((err) => {
+            throw errorHandler('Background.onConnectInitInstance', err);
+        });
         
         this.onMessageUpdateGlobalVar('recording');
 
@@ -81,10 +81,31 @@ class Background {
                     console.error(err);
                 });
             }
-        }).catch((err) => {
-            console.error(browser.runtime.lastError);
-            console.error(err);
         });
+    }
+
+    async initCache2() {
+        const globalStatePromise = browser.storage.local.get('globalState');
+        const tabStatesPromise = browser.storage.local.get('tabStates');
+        const portNamesPromise = browser.storage.local.get('portNames');
+
+        const [
+            globalStateData,
+            tabStatesData,
+            portNamesData,
+        ] = await Promise.all([
+            globalStatePromise,
+            tabStatesPromise,
+            portNamesPromise,
+        ]);
+        this.globalState = globalStateData.globalState;
+        this.tabStates = new Map(tabStatesData.tabStates);
+        this.portNames = new Set(portNamesData.portNames);
+        
+        for (const portName of this.portNames) {
+            const instanceData = await browser.storage.local.get(portName);
+            this.instances.set(portName, instanceData[portName]);
+        }
     }
 
     onActionClicked() {
@@ -129,22 +150,23 @@ class Background {
         });
     }
 
-    onConnectInitInstance(
-        instanceName: string,
-        instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
-        channel: Channel,
-    ) {
-        const err = channel.onConnect((port, tabId) => {
-            let instance = instances.get(tabId);
-            if (!instance) {
-                instance = {
-                    connected: true,
-                };
-                instances.set(tabId, { connected: true });
+    onConnectInitInstance(onError: (err: BaseError) => void) {
+        this.globalListener.onConnect(({ port, channelName, tabId }) => {
+
+            if (channelName === 'gb') {
+                this.initInstanceCache(
+                    this.guideBuilders,
+                    'guideBuilders',
+                    tabId
+                );
+            } else if (channelName === 'sb') {
+                this.initInstanceCache(this.sidebars, 'sidebars', tabId);
             } else {
-                instance.connected = true;
+                const err = new BaseError('Invalid channelName', {
+                    context: { channelName },
+                });
+                return onError(err);
             }
-            this.addInstanceToStorage(instanceName, instance);
 
             let tabState = this.tabStates.get(tabId);
             if (!tabState) {
@@ -158,11 +180,23 @@ class Background {
                 tab: tabState,
             }});
         });
-        if (err) {
-            return new Error('background.onConnectInitInstance failed', {
-                cause: err,
-            });
+    }
+
+    initInstanceCache(
+        instances: Map<TabId, GuideBuilderInstance | SidebarInstance>,
+        instanceName: string,
+        tabId: TabId,
+    ) {
+        let instance = instances.get(tabId);
+        if (!instance) {
+            instance = {
+                connected: true,
+            };
+            instances.set(tabId, { connected: true });
+        } else {
+            instance.connected = true;
         }
+        this.addInstanceToStorage(instanceName, instance);
     }
 
     addTabStateToStorage(tabId: TabId, tabState: TabState) {

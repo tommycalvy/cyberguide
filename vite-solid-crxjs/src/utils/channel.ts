@@ -2,13 +2,10 @@ import browser from "webextension-polyfill";
 import type {
     Message,
     ChannelName,
-    MessagingChannel,
     PortListener,
     MessageListener,
     TabId,
     MessageType,
-    PortDescriptor,
-    GlobalListener,
 } from "../types/messaging";
 import { 
     errorHandler,
@@ -16,16 +13,53 @@ import {
     type Result,
 } from "./error";
 
+interface Port {
+    port: browser.Runtime.Port;
+    tabId: TabId;
+}
+
+interface PortDescriptor {
+    channelName: ChannelName;
+    tabId: TabId;
+};
+
+interface MessagingChannel {
+    name: ChannelName;
+    ports: Map<TabId, Port>;
+    messageListeners: Map<ChannelName, MessageListener>;
+    disconnectListener: PortListener | null;
+    connectListener: PortListener | null;
+}
+
+type GlobalConnectListener = (
+    port: browser.Runtime.Port,
+    tabId: TabId,
+    channelName: ChannelName,
+) => void;
+
+
+type GlobalMessageListener = (
+    port: browser.Runtime.Port,
+    msg: Message,
+    tabId: TabId,
+    channelName: ChannelName,
+) => void;
 
 /** Class that creates a runtime.onConnect listener and returns the ports */
-export class ChannelListener {
-    private channels: Map<ChannelName, MessagingChannel>;
-    private globalListeners: Map<MessageType, GlobalListener>;
+export class GlobalListener {
+
+    private channels: Map<ChannelName, Channel>; 
+
+    private globalConnectListener: GlobalConnectListener | null;
+
+    private globalMessageListeners: Map<MessageType, GlobalMessageListener>;
+
     private allowedChannels: string[];
 
     constructor() {
         this.channels = new Map();
-        this.globalListeners = new Map();
+        this.globalConnectListener = null;
+        this.globalMessageListeners = new Map();
         this.allowedChannels = ["sb", "gb"];
         this.startListening((err) => {
             throw errorHandler("ChannelListener.startListening", err)
@@ -101,7 +135,6 @@ export class ChannelListener {
                     ));
                 }
             );
-
         });
     }
 
@@ -167,15 +200,25 @@ export class ChannelListener {
         channel: MessagingChannel,
         tabId: TabId,
     ): Result<null> {
+        let hasListener = false;
         const connectListener = channel.connectListener;
         if (connectListener) {
+            hasListener = true;
             connectListener(port, tabId);
             return { success: true, result: null };
         }
-        return { success: false, error: new BaseError(
-            'No connectListener for channel',
-            { context: { channelName: channel.name } }
-        )};
+        if (this.globalConnectListener) {
+            hasListener = true;
+            this.globalConnectListener(port, tabId, channel.name);
+            return { success: true, result: null };
+        }
+        if (!hasListener) {
+            return { success: false, error: new BaseError(
+                'No connectListener for channel',
+                { context: { channelName: channel.name } }
+            )};
+        }
+        return { success: true, result: null };
     }
 
     private onMessageListener(
@@ -197,7 +240,7 @@ export class ChannelListener {
                 hasListener = true;
                 messageListener(port, msg, tabId);
             }
-            const globalListener = this.globalListeners.get(msg.type);
+            const globalListener = this.globalMessageListeners.get(msg.type);
             if (globalListener) {
                 hasListener = true;
                 globalListener(port, msg, tabId, channel.name);
@@ -271,7 +314,22 @@ export class ChannelListener {
         return { success: true, result: channel };
     }
 
-    private setMessageListener(
+    private setChannelConnectListener(
+        channelName: string,
+        connectListener: PortListener,
+    ): Result<null> {
+        const channel = this.channels.get(channelName);
+        if (!channel) {
+            return { success: false, error: new BaseError(
+                'No channel exists with that name',
+                { context: { channelName } }
+            )};
+        }
+        channel.connectListener = connectListener;
+        return { success: true, result: null };
+    }
+
+    private setChannelMessageListener(
         channelName: string,
         messageType: MessageType,
         messageListener: MessageListener,
@@ -287,7 +345,7 @@ export class ChannelListener {
         return { success: true, result: null };
     }
 
-    private setDisconnectListener(
+    private setChannelDisconnectListener(
         channelName: string,
         disconnectListener: PortListener,
     ): Result<null> {
@@ -299,21 +357,6 @@ export class ChannelListener {
             )};
         }
         channel.disconnectListener = disconnectListener;
-        return { success: true, result: null };
-    }
-
-    private setConnectListener(
-        channelName: string,
-        connectListener: PortListener,
-    ): Result<null> {
-        const channel = this.channels.get(channelName);
-        if (!channel) {
-            return { success: false, error: new BaseError(
-                'No channel exists with that name',
-                { context: { channelName } }
-            )};
-        }
-        channel.connectListener = connectListener;
         return { success: true, result: null };
     }
 
@@ -338,19 +381,29 @@ export class ChannelListener {
         return { success: true, result: null };
     }
 
-    Channel = class {
+    static Channel = class Channel {
 
-        constructor(
-            private channelName: string,
-            private channelListener: ChannelListener
-        ) {
+        private channelName: string;
+        private globalListener: GlobalListener;
+
+        ports: Map<TabId, browser.Runtime.Port>;
+        messageListeners: Map<MessageType, MessageListener>;
+        disconnectListener: PortListener | null;
+        connectListener: PortListener | null;
+
+        constructor(channelName: ChannelName, globalListener: GlobalListener) {
             this.channelName = channelName;
-            this.channelListener = channelListener;
-            this.channelListener.addChannel(this.channelName);
+            this.globalListener = globalListener;
+
+            this.ports = new Map();
+            this.messageListeners = new Map();
+            this.connectListener = null;
+            this.disconnectListener = null;
+            this.globalListener.addChannel(this.channelName);
         }
 
         send(tabId: TabId, msg: Message): Result<null> {
-            const port = this.channelListener.getPort(
+            const port = this.globalListener.getPort(
                 this.channelName, tabId
             );
             if (!port.success) {
@@ -398,9 +451,23 @@ export class ChannelListener {
             return { success: true, result: null };
         }
 
+        onConnect(connectListener: PortListener): Result<null> {
+            const result = this.channelListener.setChannelConnectListener(
+                this.channelName,
+                connectListener, 
+            );
+            if (!result.success) {
+                return { success: false, error: new Error(
+                    'channel.onConnect failed',
+                    { cause: result.error }
+                )};
+            }
+            return { success: true, result: null };
+        }
+
         onMessage(messageType: MessageType, messageListener: MessageListener)
         : Result<null> {
-            const result = this.channelListener.setMessageListener(
+            const result = this.channelListener.setChannelMessageListener(
                 this.channelName,
                 messageType,
                 messageListener,
@@ -415,7 +482,7 @@ export class ChannelListener {
         }
 
         onDisconnect(disconnectListener: PortListener): Result<null> {
-            const result = this.channelListener.setDisconnectListener(
+            const result = this.channelListener.setChannelDisconnectListener(
                 this.channelName,
                 disconnectListener,
             );
@@ -427,31 +494,22 @@ export class ChannelListener {
             }
             return { success: true, result: null };
         }
-
-        onConnect(connectListener: PortListener): Result<null> {
-            const result = this.channelListener.setConnectListener(
-                this.channelName,
-                connectListener, 
-            );
-            if (!result.success) {
-                return { success: false, error: new Error(
-                    'channel.onConnect failed',
-                    { cause: result.error }
-                )};
-            }
-            return { success: true, result: null };
-        }
     }
 
     public createChannel(channelName: string) {
         return new this.Channel(channelName, this);
     }
 
-    public setGlobalListener(
+    public onConnect(globalConnectListener: GlobalConnectListener) {
+        this.globalConnectListener = globalConnectListener;
+    }
+
+
+    public onMessage(
         messageType: MessageType,
-        globalListener: GlobalListener,
+        globalMessageListener: GlobalMessageListener,
     ) {
-        this.globalListeners.set(messageType, globalListener);
+        this.globalMessageListeners.set(messageType, globalMessageListener);
     }
 
     public sendToAll(
