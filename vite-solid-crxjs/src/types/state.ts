@@ -1,4 +1,4 @@
-import type { TabId } from '../types/messaging';
+import type { TabId, PortName } from '../types/messaging';
 
 export interface GlobalClick {
     url: string;
@@ -17,15 +17,11 @@ export interface TabState {
 
 export interface Instance {
     connected: boolean;
+    data: any;
 };
-
-export interface GuideBuilderInstance extends Instance {};
-
-export interface SidebarInstance extends Instance {};
 
 export interface StoredCache {
     globalState: GlobalState;
-    tabStates: [TabId, TabState][];
-    guideBuilders: [TabId, GuideBuilderInstance][];
-    sidebars: [TabId, SidebarInstance][];
+    tabIds: TabId[];
+    portNames: PortName[];
 };

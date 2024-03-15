@@ -4,8 +4,7 @@ import guideBuilderScriptPath from '../src/guide-builder/index?script';
 import type { 
     GlobalState, 
     TabState,
-    GuideBuilderInstance,
-    SidebarInstance,
+    Instance,
     StoredCache,
 } from '../src/types/state';
 import type { TabId, PortName } from '../src/types/messaging';
@@ -21,12 +20,10 @@ class Background {
     globalListener: GlobalListener;
 
     globalState: GlobalState;
+    tabIds: Set<TabId>;
     tabStates: Map<TabId, TabState>;
-    guideBuilders: Map<TabId, GuideBuilderInstance>;
-    sidebars: Map<TabId, SidebarInstance>;
-
-    instances: Map<PortName, GuideBuilderInstance | SidebarInstance>;
     portNames: Set<PortName>;
+    instances: Map<PortName, Instance>;
 
     constructor() {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
@@ -34,12 +31,10 @@ class Background {
         this.globalListener = new GlobalListener();
 
         this.globalState = defaultGlobalState;
+        this.tabIds = new Set();
         this.tabStates = new Map();
-        this.sidebars = new Map();
-        this.guideBuilders = new Map();
-
-        this.instances = new Map();
         this.portNames = new Set();
+        this.instances = new Map();
 
         this.initCache();
         this.onActionClicked();
@@ -86,26 +81,48 @@ class Background {
 
     async initCache2() {
         const globalStatePromise = browser.storage.local.get('globalState');
-        const tabStatesPromise = browser.storage.local.get('tabStates');
+        const tabIdsPromise = browser.storage.local.get('tabIds');
         const portNamesPromise = browser.storage.local.get('portNames');
 
         const [
             globalStateData,
-            tabStatesData,
+            tabIdsData,
             portNamesData,
         ] = await Promise.all([
             globalStatePromise,
-            tabStatesPromise,
+            tabIdsPromise,
             portNamesPromise,
         ]);
         this.globalState = globalStateData.globalState;
-        this.tabStates = new Map(tabStatesData.tabStates);
+        this.tabIds = new Set(tabIdsData.tabIds);
         this.portNames = new Set(portNamesData.portNames);
-        
-        for (const portName of this.portNames) {
-            const instanceData = await browser.storage.local.get(portName);
-            this.instances.set(portName, instanceData[portName]);
+
+        if (
+            this.tabIds.size === 0 ||
+            this.portNames.size === 0 ||
+            !this.globalState
+        ) {
+            browser.storage.local.clear().then(() => {
+                return browser.storage.local.set({
+                    globalState: defaultGlobalState,
+                    tabIds: [],
+                    portNames: [],
+                });
+            }).catch((err) => {
+                console.error(err);
+            });
         }
+        
+        const instancePromises: Promise<Record<string, any>>[] = [];
+        this.portNames.forEach((portName) => instancePromises.push(
+            browser.storage.local.get(portName)
+        ));
+        const instanceDataPromise = Promise.all(instancePromises);
+
+        const tabStatePromises: Promise<Record<string, any>>[] = [];
+        this.tabIds.forEach((tabId) => tabStatePromises.push(
+            browser.storage.local.get(tabId)
+        ));
     }
 
     onActionClicked() {

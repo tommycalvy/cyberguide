@@ -1,19 +1,23 @@
 import browser from 'webextension-polyfill';
-import type { Message, MessageType } from '../types/messaging';
+import type { 
+    TabId,
+    ChannelName,
+    PortName,
+    Message,
+    MessageType
+} from '../types/messaging';
 import { 
     errorHandler,
     BaseError,
     type Result,
 } from "./error";
 
-type TabId = number;
-type ChannelName = string;
-type PortName = string;
 
 interface Port {
+    name: PortName;
     port: browser.Runtime.Port;
-    tabId: TabId;
     channelName: ChannelName;
+    tabId: TabId;
 }
 
 type ConnectListener = (port: Port) => void;
@@ -70,7 +74,7 @@ export default class GlobalListener {
             const tabId = tabIdResult.result;
 
             const portName = channelName + '-' + tabId;
-            const newPort = { port, channelName, tabId };
+            const newPort = { name: portName, port, channelName, tabId };
 
             this.ports.set(portName, newPort);
 
@@ -111,6 +115,21 @@ export default class GlobalListener {
         });
     }
 
+    private getTabId(port: browser.Runtime.Port): Result<TabId> {
+        let tabId = port.sender?.tab?.id?.toString();
+        if (tabId) {
+            return { success: true, result: tabId };
+        } 
+        tabId = port.name.split('-')[1];
+        if (tabId) {
+            return { success: true, result: tabId };
+        }
+        const err = new BaseError('No tabId in port.sender or port.name', {
+            context: { portName: port.name }
+        });
+        return { success: false, error: err };
+    }
+
     public onConnect(listener: ConnectListener) {
         this.connectListener = listener;
     }
@@ -123,34 +142,14 @@ export default class GlobalListener {
         this.messageListeners.set(messageType, listener);
     }
 
-    private getTabId(port: browser.Runtime.Port): Result<TabId> {
-        let tabId = port.sender?.tab?.id;
-        if (tabId) {
-            return { success: true, result: tabId };
-        } 
-        tabId = parseInt(port.name.split('-')[1]);
-        if (tabId) {
-            return { success: true, result: tabId };
-        }
-        const err = new BaseError('No tabId in port.sender or port.name', {
-            context: { portName: port.name }
-        });
-        return { success: false, error: err };
-    }
-
-    public sendToPort(
-        channelName: ChannelName,
-        tabId: TabId,
-        message: Message,
-    ): Result<null> {
-        const portName = channelName + '-' + tabId;
+    public sendToPort(portName: PortName, message: Message): Result<null> {
         const port = this.ports.get(portName);
         if (port) {
             port.port.postMessage(message);
             return { success: true, result: null };
         } else {
             const err = new BaseError('No port found', {
-                context: { channelName, tabId }
+                context: { portName }
             });
             return { success: false, error: err };
         }
@@ -159,12 +158,15 @@ export default class GlobalListener {
     public sendToChannel(
         channelName: ChannelName,
         message: Message,
+        except?: TabId,
     ): Result<null> {
-        const channel = this.channel_ports.get(channelName);
-        if (channel) {
-            for (const port of channel) {
-                port.port.postMessage(message);
-            }
+        const ports = this.channel_ports.get(channelName);
+        if (ports) {
+            ports.forEach((port) => {
+                if (port.tabId !== except) {
+                    port.port.postMessage(message);
+                }
+            });
             return { success: true, result: null };
         } else {
             const err = new BaseError('No channel found', {
@@ -174,12 +176,18 @@ export default class GlobalListener {
         }
     }
 
-    public sendToTab( tabId: TabId, message: Message): Result<null> {
-        const tab = this.tab_ports.get(tabId);
-        if (tab) {
-            for (const port of tab) {
-                port.port.postMessage(message);
-            }
+    public sendToTab(
+        tabId: TabId,
+        message: Message,
+        except?: ChannelName
+    ): Result<null> {
+        const ports = this.tab_ports.get(tabId);
+        if (ports) {
+            ports.forEach((port) => {
+                if (port.channelName !== except) {
+                    port.port.postMessage(message);
+                }
+            });
             return { success: true, result: null };
         } else {
             const err = new BaseError('No tab found', {
@@ -187,5 +195,14 @@ export default class GlobalListener {
             });
             return { success: false, error: err };
         }
+    }
+
+    public sendToAll(message: Message, except?: PortName): Result<null> {
+        this.ports.forEach((port) => {
+            if (port.name !== except) {
+                port.port.postMessage(message);
+            }
+        });
+        return { success: true, result: null };
     }
 }
