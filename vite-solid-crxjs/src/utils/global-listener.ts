@@ -22,11 +22,11 @@ interface Port {
 
 type ConnectListener = (port: Port) => void;
 type DisconnectListener = (port: Port) => void;
-type MessageListener = (port: Port, msg: Message) => void;
+type MessageListener = (message: Message, port: Port) => void;
 
 export default class GlobalListener {
 
-    private allowedChannels: Set<ChannelName>;
+    private _allowedChannels: Set<ChannelName>;
     
     private connectListener: ConnectListener;
     private messageListeners: Map<MessageType, MessageListener>;
@@ -38,7 +38,7 @@ export default class GlobalListener {
 
     constructor(allowedChannels: ChannelName[] = ['sb', 'gb']) {
 
-        this.allowedChannels = new Set(allowedChannels);
+        this._allowedChannels = new Set(allowedChannels);
 
         this.connectListener = () => {};
         this.messageListeners = new Map();
@@ -204,5 +204,9 @@ export default class GlobalListener {
             }
         });
         return { success: true, result: null };
+    }
+
+    public get allowedChannels() {
+        return this._allowedChannels;
     }
 }

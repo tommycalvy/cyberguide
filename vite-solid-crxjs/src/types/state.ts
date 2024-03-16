@@ -17,7 +17,7 @@ export interface TabState {
 
 export interface Instance {
     connected: boolean;
-    data: any;
+    data?: any;
 };
 
 export interface StoredCache {
