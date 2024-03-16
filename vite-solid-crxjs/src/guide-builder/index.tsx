@@ -5,33 +5,30 @@ import recordingCountdownStyles from "./components/recording-countdown.module.cs
 import fireRingClickStyles from "./components/fire-ring-click.module.css?inline";
 import previewGuideStyles from "./components/preview-guide.module.css?inline";
 
-export default function RenderGuideBuilder() {
+console.log("Hello from GuideBuilder.tsx");
 
-    console.log("Hello from GuideBuilder.tsx");
+const shadowHost = document.createElement("div");
+shadowHost.id = "Cyber_Guide_Builder";
+const shadowRoot = shadowHost.attachShadow({ mode: "open" });
 
-    const shadowHost = document.createElement("div");
-    shadowHost.id = "Cyber_Guide_Builder";
-    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+const modernNormalizeSheet = new CSSStyleSheet();
+modernNormalizeSheet.replaceSync(modernNormalizeStyles);
 
-    const modernNormalizeSheet = new CSSStyleSheet();
-    modernNormalizeSheet.replaceSync(modernNormalizeStyles);
+const recordingCountdownSheet = new CSSStyleSheet();
+recordingCountdownSheet.replaceSync(recordingCountdownStyles);
 
-    const recordingCountdownSheet = new CSSStyleSheet();
-    recordingCountdownSheet.replaceSync(recordingCountdownStyles);
+const fireRingClickSheet = new CSSStyleSheet();
+fireRingClickSheet.replaceSync(fireRingClickStyles);
 
-    const fireRingClickSheet = new CSSStyleSheet();
-    fireRingClickSheet.replaceSync(fireRingClickStyles);
+const previewGuideSheet = new CSSStyleSheet();
+previewGuideSheet.replaceSync(previewGuideStyles);
 
-    const previewGuideSheet = new CSSStyleSheet();
-    previewGuideSheet.replaceSync(previewGuideStyles);
+shadowRoot.adoptedStyleSheets = [
+    modernNormalizeSheet,
+    recordingCountdownSheet,
+    fireRingClickSheet,
+    previewGuideSheet,
+];
+document.body.append(shadowHost);
 
-    shadowRoot.adoptedStyleSheets = [
-        modernNormalizeSheet,
-        recordingCountdownSheet,
-        fireRingClickSheet,
-        previewGuideSheet,
-    ];
-    document.body.append(shadowHost);
-
-    render(() => <GuideBuilder/>, shadowRoot);
-}
+render(() => <GuideBuilder/>, shadowRoot);

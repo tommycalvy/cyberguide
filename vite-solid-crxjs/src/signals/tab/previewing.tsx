@@ -10,7 +10,7 @@ export default function useTabPreviewing(backgroundPort: Port) {
     );
 
     function initTabPreviewing(tabPreviewing: boolean | undefined) {
-        if (tabPreviewing) {
+        if (tabPreviewing !== undefined) {
             setTabPreviewing(tabPreviewing);
         } else {
             throw new Error('On init tabPreviewing not found');

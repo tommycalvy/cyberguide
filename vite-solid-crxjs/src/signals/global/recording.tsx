@@ -10,7 +10,7 @@ export default function useGlobalRecording(backgroundPort: Port) {
     );
 
     function initGlobalRecording(globalRecording: boolean | undefined) {
-        if (globalRecording) { 
+        if (globalRecording !== undefined) { 
             setGlobalRecording(globalRecording);
         } else {
             throw new Error('On init global recording not found');
@@ -27,6 +27,7 @@ export default function useGlobalRecording(backgroundPort: Port) {
     });
 
     function startGlobalRecording() {
+        console.log('startGlobalRecording', globalRecording());
         setGlobalRecording(true);
         const err = backgroundPort.send({ 
             type: messageType, 

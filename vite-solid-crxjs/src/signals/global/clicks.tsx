@@ -9,7 +9,7 @@ export default function useGlobalClicks(backgroundPort: Port) {
     const [globalClicks, setGlobalClicks] = createSignal(defaultGlobalClicks);
 
     function initGlobalClicks(globalClicks: GlobalClick[] | undefined) {
-        if (globalClicks) {
+        if (globalClicks !== undefined) {
             setGlobalClicks(globalClicks);
         } else {
             throw new Error('On init globalClicks not found');

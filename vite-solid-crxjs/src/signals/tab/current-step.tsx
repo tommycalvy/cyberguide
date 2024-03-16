@@ -10,7 +10,7 @@ export default function useTabCurrentStep(backgroundPort: Port) {
     );
 
     function initTabCurrentStep(tabCurrentStep: number | undefined) {
-        if (tabCurrentStep) {
+        if (tabCurrentStep !== undefined) {
             setTabCurrentStep(tabCurrentStep);
         } else {
             throw new Error('On init tabCurrentStep not found');

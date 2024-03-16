@@ -33,39 +33,42 @@ class Background {
         this.tabStates = new Map();
         this.portNames = [];
         this.instances = new Map();
+        console.log('Background.constructor');
 
-        this.initBackground((err) => {
+        this.init((err) => {
             throw errorHandler('Background.initBackground', err);
         });
     }
 
-    async initBackground(onError: (err: BaseError) => void) {
-        await this.initCache();
+    init(onError: (err: BaseError) => void) {
         this.onActionClicked((err) => {
             onError(errorHandler('Background.onActionClicked', err));
         });
-        this.onTabUpdated();
+        this.initCache().then(() => {
+            console.log('cache initialized');
+            this.onTabUpdated();
 
-        this.onConnectInitInstance((err) => {
-            onError(errorHandler('Background.onConnectInitInstance', err));
-        });
+            this.onConnectInitInstance((err) => {
+                onError(errorHandler('Background.onConnectInitInstance', err));
+            });
 
-        this.onDisconnect((err) => {
-            onError(errorHandler('Background.onDisconnect', err));
-        });
-        
-        this.onMessageUpdateGlobalVar('recording', (err) => {
-            onError(errorHandler('Background.onMessageUpdateGlobalVar', err));
-        });
+            this.onDisconnect((err) => {
+                onError(errorHandler('Background.onDisconnect', err));
+            });
+            
+            this.onMessageUpdateGlobalVar('recording', (err) => {
+                onError(errorHandler('Background.onMessageUpdateGlobalVar', err));
+            });
 
-        this.onMessageUpdateGlobalArray('clicks', (err) => {
-            onError(
-                errorHandler('Background.onMessageUpdateGlobalArray', err)
-            );
-        });
+            this.onMessageUpdateGlobalArray('clicks', (err) => {
+                onError(
+                    errorHandler('Background.onMessageUpdateGlobalArray', err)
+                );
+            });
 
-        this.onMessageUpdateTabState('previewing');
-        this.onMessageUpdateTabState('currentStep');
+            this.onMessageUpdateTabState('previewing');
+            this.onMessageUpdateTabState('currentStep');
+        });
     }
 
 
@@ -87,19 +90,12 @@ class Background {
         this.tabIds = tabIdsData.tabIds;
         this.portNames = portNamesData.portNames;
 
-        if (
-            this.tabIds.length === 0 ||
-            this.portNames.length === 0 ||
-            !this.globalState
-        ) {
-            browser.storage.local.clear().then(() => {
-                return browser.storage.local.set({
-                    globalState: defaultGlobalState,
-                    tabIds: [],
-                    portNames: [],
-                });
-            }).catch((err) => {
-                console.error(err);
+        if (!(this.tabIds && this.portNames && this.globalState)) {
+            await browser.storage.local.clear();
+            await browser.storage.local.set({
+                globalState: defaultGlobalState,
+                tabIds: [],
+                portNames: [],
             });
         }
         
@@ -140,10 +136,20 @@ class Background {
                 return;
             }
             const guideBuilder = this.instances.get('gb-' + tabId);
+            console.log('guideBuilder', guideBuilder);
             if (!guideBuilder || !guideBuilder.connected) {
                 browser.scripting.executeScript({
                     target: { tabId },
                     files: [guideBuilderScriptPath],
+                }).catch((err) => {
+                    const error = new BaseError(
+                        'executeScript failed',
+                        { 
+                            cause: err,
+                            context: { tabId, guideBuilderScriptPath } 
+                        }
+                    );
+                    return onError(error);
                 });
             }
 
@@ -284,5 +290,4 @@ class Background {
         });
     }
 }
-
 new Background();
