@@ -4,14 +4,12 @@ import { defaultGlobalRecording } from '../../types/defaults';
 
 const messageType = 'global-recording';
 
-const useGlobalRecording = function(backgroundPort: Port) {
-    console.log('useGlobalRecording');
+export default function useGlobalRecording(backgroundPort: Port) {
     const [globalRecording, setGlobalRecording] = createSignal(
         defaultGlobalRecording
     );
 
     function initGlobalRecording(globalRecording: boolean | undefined) {
-        console.log('initGlobalRecording', globalRecording);
         if (globalRecording !== undefined) {
             setGlobalRecording(globalRecording);
         } else {
@@ -21,7 +19,7 @@ const useGlobalRecording = function(backgroundPort: Port) {
 
     backgroundPort.setMessageListener(messageType, (msg) => {
         const globalRecording = msg.data;
-        if (globalRecording) {
+        if (globalRecording !== undefined) {
             setGlobalRecording(globalRecording);
         } else {
             throw new Error('On update global recording not found');
@@ -29,7 +27,6 @@ const useGlobalRecording = function(backgroundPort: Port) {
     });
 
     function startGlobalRecording() {
-        console.log('startGlobalRecording', globalRecording());
         setGlobalRecording(true);
         const err = backgroundPort.send({ 
             type: messageType, 
@@ -64,4 +61,3 @@ const useGlobalRecording = function(backgroundPort: Port) {
         stopGlobalRecording
     };
 };
-export default useGlobalRecording;

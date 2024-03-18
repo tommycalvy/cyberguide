@@ -19,7 +19,7 @@ export default function useTabPreviewing(backgroundPort: Port) {
 
     backgroundPort.setMessageListener(messageType, (msg) => {
         const tabPreviewing = msg.data;
-        if (tabPreviewing) {
+        if (tabPreviewing !== undefined) {
             setTabPreviewing(tabPreviewing);
         } else {
             throw new Error('On update tabPreviewing not found in message');

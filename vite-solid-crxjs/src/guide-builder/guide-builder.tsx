@@ -2,7 +2,7 @@ import { createEffect, Show } from 'solid-js';
 import RecordingCountdown from "./components/recording-countdown";
 import FireRingClick from "./components/fire-ring-click";
 import PreviewGuide from "./components/preview-guide";
-import { GuideBuilderProvider, useGuideBuilder } from './provider';
+import { useGuideBuilder } from './provider';
 import type { GlobalClick } from '../types/state';
 
 
@@ -24,7 +24,7 @@ export default function GuideBuilder() {
     });
         
     return (
-        <GuideBuilderProvider>
+        <>
             <Show when={globalRecording()}>
                 <RecordingCountdown />
                 <FireRingClick />
@@ -32,7 +32,7 @@ export default function GuideBuilder() {
             <Show when={tabPreviewing()}>
                 <PreviewGuide />
             </Show>
-        </GuideBuilderProvider>
+        </>
     );
 }
 

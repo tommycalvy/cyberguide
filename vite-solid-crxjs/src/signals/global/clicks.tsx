@@ -18,7 +18,7 @@ export default function useGlobalClicks(backgroundPort: Port) {
 
     backgroundPort.setMessageListener(messageType, (msg) => {
         const globalClick = msg.data;
-        if (globalClick) {
+        if (globalClick !== undefined) {
             setGlobalClicks(
                 (globalClicks: GlobalClick[]) => [...globalClicks, globalClick]
             );

@@ -1,4 +1,5 @@
 import GuideBuilder from "./guide-builder";
+import { GuideBuilderProvider } from "./provider";
 import { render } from "solid-js/web";
 import modernNormalizeStyles from "../styles/modern-normalize.css?inline";
 import recordingCountdownStyles from "./components/recording-countdown.module.css?inline";
@@ -31,4 +32,11 @@ shadowRoot.adoptedStyleSheets = [
 ];
 document.body.append(shadowHost);
 
-render(() => <GuideBuilder/>, shadowRoot);
+render(
+    () => (
+        <GuideBuilderProvider>
+            <GuideBuilder/>
+        </GuideBuilderProvider>
+    ), 
+    shadowRoot
+);
