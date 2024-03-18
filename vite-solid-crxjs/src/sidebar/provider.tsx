@@ -127,4 +127,10 @@ export function SidebarProvider(props: { children: any }) {
     );
 }
 
-export function useSidebar() { return useContext(SidebarContext); }
+export function useSidebar() { 
+    const sidebar = useContext(SidebarContext);
+    if (sidebar === undefined) {
+        throw new Error('useSidebar must be used within a SidebarProvider');
+    }
+    return sidebar;
+}

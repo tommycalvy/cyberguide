@@ -24,6 +24,7 @@ class Background {
     instances: Map<PortName, Instance>;
 
     constructor() {
+        browser.storage.local.clear();
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
         this.globalListener = new GlobalListener();
@@ -33,7 +34,6 @@ class Background {
         this.tabStates = new Map();
         this.portNames = [];
         this.instances = new Map();
-        console.log('Background.constructor');
 
         this.init((err) => {
             throw errorHandler('Background.initBackground', err);
@@ -45,7 +45,6 @@ class Background {
             onError(errorHandler('Background.onActionClicked', err));
         });
         this.initCache().then(() => {
-            console.log('cache initialized');
             this.onTabUpdated();
 
             this.onConnectInitInstance((err) => {
@@ -87,8 +86,11 @@ class Background {
             portNamesPromise,
         ]);
         this.globalState = globalStateData.globalState;
+        console.log('globalState', this.globalState);
         this.tabIds = tabIdsData.tabIds;
+        console.log('tabIds', this.tabIds);
         this.portNames = portNamesData.portNames;
+        console.log('portNames', this.portNames);
 
         if (!(this.tabIds && this.portNames && this.globalState)) {
             await browser.storage.local.clear();
@@ -97,6 +99,9 @@ class Background {
                 tabIds: [],
                 portNames: [],
             });
+            this.globalState = defaultGlobalState;
+            this.tabIds = [];
+            this.portNames = [];
         }
         
         const instancePromises: Promise<Record<string, any>>[] = [];

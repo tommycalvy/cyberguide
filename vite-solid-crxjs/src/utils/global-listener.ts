@@ -97,7 +97,7 @@ export default class GlobalListener {
             port.onMessage.addListener((msg) => {
                 const messageListener = this.messageListeners.get(msg.type);
                 if (messageListener) {
-                    messageListener(newPort, msg);
+                    messageListener(msg, newPort);
                 } else {
                     onError(new BaseError(
                         'No listener for message type',

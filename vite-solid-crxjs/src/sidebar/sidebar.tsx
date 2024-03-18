@@ -17,13 +17,19 @@ function Sidebar() {
     let lastClickStep: HTMLDivElement | 
         ((el: HTMLDivElement) => void) | undefined = undefined;
     console.log('sidebar');
-    
+    console.log(startGlobalRecording);
+    console.log(startGlobalRecording());
+    function record() {
+        console.log('record');
+        startGlobalRecording();
+    }
+
     return (
         <SidebarProvider>
             <div class={styles.container}>
                 <h1 class={styles.title}>Cyber Guide</h1>
                 <Show when={globalRecording()} fallback={
-                    <button onClick={startGlobalRecording}>Record</button>
+                    <button onClick={record}>Record</button>
                 }>
                     <button onClick={stopGlobalRecording}>
                         Stop Recording
