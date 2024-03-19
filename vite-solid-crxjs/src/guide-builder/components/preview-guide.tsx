@@ -76,6 +76,7 @@ function handleClick(
         console.log(url);
 
         const click = globalClicks()[tabCurrentStep()];
+        console.log('globalClick', click);
         if (click.url !== url) {
             console.error(new Error('url does not match'));
             return;

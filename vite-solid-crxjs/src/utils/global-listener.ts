@@ -49,6 +49,8 @@ export default class GlobalListener {
         this.tab_ports = new Map();
 
         this.startListening((err) => {
+            console.error(err.stack);
+            console.error(err.context);
             throw errorHandler('GlobalListener.startListening', err);
         });
     }
@@ -87,7 +89,7 @@ export default class GlobalListener {
 
             const tab = this.tab_ports.get(tabId);
             if (!tab) {
-                this.tab_ports.set(tabId, new Set());
+                this.tab_ports.set(tabId, new Set([newPort]));
             } else {
                 tab.add(newPort);
             }
@@ -183,6 +185,7 @@ export default class GlobalListener {
     ): Result<null> {
         const ports = this.tab_ports.get(tabId);
         if (ports) {
+            console.log(ports);
             ports.forEach((port) => {
                 if (port.channelName !== except) {
                     port.port.postMessage(message);

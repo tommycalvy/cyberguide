@@ -36,6 +36,8 @@ class Background {
         this.instances = new Map();
 
         this.init((err) => {
+            console.error(err.stack);
+            console.error(err.context);
             throw errorHandler('Background.initBackground', err);
         });
     }
