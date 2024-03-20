@@ -28,28 +28,28 @@ export default function useGlobalRecording(backgroundPort: Port) {
 
     function startGlobalRecording() {
         setGlobalRecording(true);
-        const err = backgroundPort.send({ 
+        const sendResult = backgroundPort.send({ 
             type: messageType, 
             data: true,
         });
-        if (err) {
+        if (!sendResult.success) {
             throw new Error(
                 'backgroundPort.send failed in startGlobalRecording', 
-                { cause: err },
+                { cause: sendResult.error },
             );
         }
     }
 
     function stopGlobalRecording() {
         setGlobalRecording(false);
-        const err = backgroundPort.send({ 
+        const sendResult = backgroundPort.send({ 
             type: messageType, 
             data: false,
         });
-        if (err) {
+        if (!sendResult.success) {
             throw new Error(
                 'backgroundPort.send failed in stopGlobalRecording', 
-                { cause: err },
+                { cause: sendResult.error },
             );
         }
     }

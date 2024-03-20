@@ -45,17 +45,50 @@ function recordClick(
         return;
     }
     e.target.addEventListener('pointerup', function logElement(e) {
-        if (e.target instanceof Element === false) {
+        const elt = e.target;
+        if (elt instanceof Element === false) {
             console.error(new Error('not an Element'));
             return;
         }
-        console.log(e.target);
+        if (elt.hasAttributes()) {
+            console.log('attributes', elt.attributes);
+        }
+        console.log(elt.classList);
+        console.log(elt.id === '');
         let url = window.location.href;
         console.log(url);
         if (url === null) {
             console.error(new Error('url is null'));
         }
-        addGlobalClick({ url: url, elt: e.target });
-        e.target.removeEventListener('pointerup', logElement);
+        let classList: string[] | null = null;
+        if (elt.classList.length > 0) {
+            classList = [];
+            for (let i = 0; i < elt.classList.length; i++) {
+                const className = elt.classList.item(i);
+                if (className === null) {
+                    break;
+                }
+                classList.push(className);
+            }
+        }
+
+        const attributes = [];
+        for (let i = 0; i < elt.attributes.length; i++) {
+            const attr = elt.attributes.item(i);
+            if (attr === null) {
+                break;
+            }
+            const attribute: [string, string] = [attr.name, attr.value];
+            attributes.push(attribute);
+        }
+
+        const eltInfo = {
+            id: elt.id === '' ? null : elt.id,
+            classList,
+            href: elt.getAttribute('href'),
+            attributes,
+        };
+        addGlobalClick({ url: url, elt: eltInfo });
+        elt.removeEventListener('pointerup', logElement);
     });
 }

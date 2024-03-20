@@ -6,12 +6,7 @@ import type {
     Message,
     MessageType
 } from '../types/messaging';
-import { 
-    errorHandler,
-    BaseError,
-    type Result,
-} from "./error";
-
+import { BaseError, type Result } from "./error";
 
 interface Port {
     name: PortName;
@@ -49,9 +44,8 @@ export default class GlobalListener {
         this.tab_ports = new Map();
 
         this.startListening((err) => {
-            console.error(err.stack);
-            console.error(err.context);
-            throw errorHandler('GlobalListener.startListening', err);
+            console.warn(err.message);
+            console.warn(err.context);
         });
     }
 
@@ -185,7 +179,6 @@ export default class GlobalListener {
     ): Result<null> {
         const ports = this.tab_ports.get(tabId);
         if (ports) {
-            console.log(ports);
             ports.forEach((port) => {
                 if (port.channelName !== except) {
                     port.port.postMessage(message);

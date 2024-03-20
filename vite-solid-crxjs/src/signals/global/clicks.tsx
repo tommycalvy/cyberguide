@@ -29,14 +29,14 @@ export default function useGlobalClicks(backgroundPort: Port) {
 
     function addGlobalClick(globalClick: GlobalClick) {
         setGlobalClicks((globalClicks) => [...globalClicks, globalClick]);
-        const err = backgroundPort.send({ 
+        const sendResult = backgroundPort.send({ 
             type: messageType, 
             data: globalClick,
         });
-        if (err) {
+        if (!sendResult.success) {
             throw new Error(
                 'backgroundPort.send failed in addGlobalClick', 
-                { cause: err },
+                { cause: sendResult.error },
             );
         }
     }

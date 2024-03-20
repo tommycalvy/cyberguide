@@ -28,28 +28,28 @@ export default function useTabPreviewing(backgroundPort: Port) {
 
     function startTabPreviewing() {
         setTabPreviewing(true);
-        const err = backgroundPort.send({ 
+        const sendResult = backgroundPort.send({ 
             type: messageType, 
             data: true,
         });
-        if (err) {
+        if (!sendResult.success) {
             throw new Error(
                 'backgroundPort.send failed in startTabPreviewing', 
-                { cause: err },
+                { cause: sendResult.error },
             );
         }
     }
 
     function stopTabPreviewing() {
         setTabPreviewing(false);
-        const err = backgroundPort.send({ 
+        const sendResult = backgroundPort.send({ 
             type: messageType, 
             data: false,
         });
-        if (err) {
+        if (!sendResult.success) {
             throw new Error(
                 'backgroundPort.send failed in stopTabPreviewing', 
-                { cause: err },
+                { cause: sendResult.error },
             );
         }
     }

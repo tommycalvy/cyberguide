@@ -2,7 +2,12 @@ import type { TabId, PortName } from '../types/messaging';
 
 export interface GlobalClick {
     url: string;
-    elt: Element;
+    elt: {
+        id: string | null;
+        classList: string[] | null;
+        href: string | null;
+        attributes: [string, string][];
+    };
 };
 
 export interface GlobalState {

@@ -27,14 +27,14 @@ export default function useTabCurrentStep(backgroundPort: Port) {
 
     function incrementTabCurrentStep() {
         setTabCurrentStep((currentStep: number) => currentStep + 1);
-        const err = backgroundPort.send({ 
+        const sendResult = backgroundPort.send({ 
             type: messageType, 
             data: true, //Sending true to increment the current step
         });
-        if (err) {
+        if (!sendResult.success) {
             throw new Error(
                 'backgroundPort.send failed in incrementTabCurrentStep', 
-                { cause: err },
+                { cause: sendResult.error },
             );
         }
     }

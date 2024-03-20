@@ -250,6 +250,11 @@ class Background {
     onMessageUpdateGlobalVar(key: string, onError: (err: Error) => void) {
         this.globalListener.onMessage('global-' + key, (message, { name }) => {
             this.globalListener.sendToAll(message, name);
+
+            if (key === 'recording') {
+                this.globalState.recording = message.data;
+            }
+
             browser.storage.local.get('globalState').then((r) => {
                 const globalState = r.globalState;
                 if (!globalState) {
@@ -268,6 +273,11 @@ class Background {
     ) {
         this.globalListener.onMessage('global-' + key, (message, { name }) => {
             this.globalListener.sendToAll(message, name);
+
+            if (key === 'clicks') {
+                this.globalState.clicks.push(message.data);
+            }
+
             browser.storage.local.get('globalState').then((r) => {
                 const globalState = r.globalState;
                 if (!globalState) {
@@ -293,6 +303,18 @@ class Background {
             (message, { channelName, tabId }
         ) => {
             this.globalListener.sendToTab(tabId, message, channelName);
+            if (key === 'previewing' && message.data === true) {
+                const tabState = this.tabStates.get(tabId);
+                if (!tabState) {
+                    throw new Error('tabState not found');
+                }
+                tabState.previewing = true;
+                const url = this.globalState.clicks[0].url;
+                if (!url) {
+                    throw new Error('url not found');
+                }
+                browser.tabs.update(parseInt(tabId), { url });
+            }
             browser.storage.local.set({ [tabId]: message.data });
         });
     }

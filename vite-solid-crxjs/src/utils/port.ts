@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill';
 import type { Message, MessageType } from '../types/messaging';
 import type { Setter } from 'solid-js';
+import { BaseError, type Result } from './error';
 
 class Port {
 
@@ -74,20 +75,24 @@ class Port {
         this.messageListeners.set(messageType, messageListener);
     }
 
-    removeMessageListener(messageType: MessageType): Error | null {
+    removeMessageListener(messageType: MessageType): Result<null> {
         const removed = this.messageListeners.delete(messageType);
         if (removed) {
-            return null;
+            return { success: true, result: null };
         }
-        return new Error('No listener for message type: ' + messageType);
+        const err = new BaseError('No listener for message type', {
+            context: { messageType },
+        });
+        return { success: false, error: err };
     }
 
-    send(msg: Message): Error | null {
+    send(msg: Message): Result<null> {
         if (this.backgroundPort) {
             this.backgroundPort.postMessage(msg);
-            return null;
+            return { success: true, result: null };
         }
-        return new Error('Port is not connected');
+        const err = new Error('Port is not connected');
+        return { success: false, error: err };
     }
 }
 
