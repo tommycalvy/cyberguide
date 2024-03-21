@@ -1,14 +1,16 @@
 import type { TabId, PortName } from '../types/messaging';
 
+export interface EltInfo {
+    id: string | null;
+    selector: string;
+    classList: string[] | null;
+    href: string | null;
+    attributes: [string, string][];
+};
+
 export interface GlobalClick {
     url: string;
-    elt: {
-        id: string | null;
-        selector: string;
-        classList: string[] | null;
-        href: string | null;
-        attributes: [string, string][];
-    };
+    eltInfo: EltInfo;
 };
 
 export interface GlobalState {

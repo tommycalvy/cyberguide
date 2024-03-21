@@ -1,7 +1,7 @@
-import { createMemo, onCleanup, Show } from 'solid-js';
+import { createMemo, createEffect, Show } from 'solid-js';
 import styles from './preview-guide.module.css';
 import { useGuideBuilder } from '../provider';
-import { GlobalClick } from '../../types/state';
+import { EltInfo } from '../../types/state';
 import { type Result, BaseError } from '../../utils/error';
 
 export default function PreviewGuide() {
@@ -9,40 +9,48 @@ export default function PreviewGuide() {
         { global: { globalClicks }, tab: { tabCurrentStep } },
         { tab: { incrementTabCurrentStep } },
     ] = useGuideBuilder();
-   
-    const clickListener = (e: PointerEvent) => handleClick(
-        e, 
-        globalClicks,
-        tabCurrentStep,
-        incrementTabCurrentStep,
-    );
 
-    document.addEventListener('pointerup', clickListener);
-
-    onCleanup(() => {
-        document.removeEventListener('pointerup', clickListener);
-    });
-    
-    const boundingRect = createMemo(() => {
+    const elt = createMemo(() => {
         const clicks = globalClicks();
         const clicksLength = clicks.length;
-        const currentStep = tabCurrentStep();
         if (clicksLength === 0) {
-            return;
+            console.log('clicksLength === 0');
+            return null;
         }
+        const currentStep = tabCurrentStep();
         if (currentStep === clicksLength) {
-            return;
+            console.log('currentStep === clicksLength');
+            return null;
         }
-        const elt = clicks[currentStep].elt;
-        console.log('elt', elt);
-        const rect = elt.getBoundingClientRect();
-        if (rect instanceof DOMRect === false) {
-            console.error(new Error('not a DOMRect'));
-            return;
+        const url = window.location.href;
+        const click = clicks[currentStep];
+        if (click.url !== url) {
+            console.warn('url does not match');
+            return null;
         }
-        return rect;
-    }, { equals: false });
-    
+        const eltResult = findElement(click.eltInfo);
+        if (!eltResult.success) {
+            console.error(eltResult.error);
+            return null;
+        }
+        return eltResult.result;
+    });
+
+    const boundingRect = createMemo(() => {
+        const targetElt = elt();
+        if (targetElt) {
+            return targetElt.getBoundingClientRect();
+        }
+        return null;
+    });
+   
+    createEffect(() => {
+        const targetElt = elt();
+        if (targetElt) {
+            handleClick(targetElt, incrementTabCurrentStep);
+        }
+    });
+
     return (
         <Show when={ 
             boundingRect() && tabCurrentStep() < globalClicks().length
@@ -59,64 +67,46 @@ export default function PreviewGuide() {
 }
 
 function handleClick(
-    e: PointerEvent,
-    globalClicks: () => GlobalClick[],
-    tabCurrentStep: () => number,
+    elt: Element,
     incrementTabCurrentStep: () => void,
 ) {
-    if (e.target instanceof Element === false) {
-        console.error(new Error('not an Element'));
-        return;
-    }
-    e.target.addEventListener('pointerup', function logElement(e) {
-        if (e.target instanceof Element === false) {
-            console.error(new Error('not an Element'));
-            return;
-        }
-        console.log(e.target);
-        let url = window.location.href;
-        console.log(url);
-
-        const click = globalClicks()[tabCurrentStep()];
-        console.log('clicked element:', click.elt);
-        if (click.url !== url) {
-            console.error(new Error('url does not match'));
-            return;
-        }
-
-        console.log('click matches');
-        incrementTabCurrentStep();
-        e.target.removeEventListener('pointerup', logElement);
+    elt.addEventListener('pointerdown', function handlePointerDown() {
+        elt.addEventListener('pointerup', function handlePointerUp() {
+            console.log('click matches');
+            incrementTabCurrentStep();
+            elt.removeEventListener('pointerdown', handlePointerDown);
+            elt.removeEventListener('pointerup', handlePointerUp);
+        });
     });
 }
 
 //TODO: Check if element is in view
-function findElement(click: GlobalClick): Result<Element> {
-    const elt = document.querySelector(click.elt.selector);
+function findElement(eltInfo: EltInfo): Result<Element> {
+    const elt = document.querySelector(eltInfo.selector);
     if (elt) {
         return { success: true, result: elt };
     } else {
         const err = new BaseError("couldn't find element by selector",
-            { context: { selector: click.elt.selector } },
+            { context: { selector: eltInfo.selector } },
         );
         console.warn(err);
     }
 
     let elts: NodeListOf<Element> | Element[] = []; 
 
-    if (click.elt.href) {
-        elts = document.querySelectorAll(`[href="${click.elt.href}"]`);
+    if (eltInfo.href) {
+        elts = document.querySelectorAll(`[href="${eltInfo.href}"]`);
         if (elts.length === 1) {
             return { success: true, result: elts[0] };
         }
     } 
 
-    if (click.elt.classList) {
-        elts = narrowElementsByClassList(elts, click.elt.classList);
+    if (eltInfo.classList) {
+        elts = narrowElementsByClassList(elts, eltInfo.classList);
     }
 
-    if (click.elt.attributes) {
-        elts = narrowElementsByAttributes(elts, click.elt.attributes);
+    if (eltInfo.attributes) {
+        elts = narrowElementsByAttributes(elts, eltInfo.attributes);
     }
 
     if (elts.length === 1) {
@@ -125,8 +115,8 @@ function findElement(click: GlobalClick): Result<Element> {
         const err = new BaseError(
             "multiple elements found by classList and attributes",
             { context: { 
-                classList: click.elt.classList,
-                attributes: click.elt.attributes 
+                classList: eltInfo.classList,
+                attributes: eltInfo.attributes 
             } },
         );
         return { success: false, error: err };
@@ -134,8 +124,8 @@ function findElement(click: GlobalClick): Result<Element> {
         const err = new BaseError(
             "no elements found by classList and attributes",
             { context: { 
-                classList: click.elt.classList,
-                attributes: click.elt.attributes 
+                classList: eltInfo.classList,
+                attributes: eltInfo.attributes 
             } },
         );
         return { success: false, error: err };

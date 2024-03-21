@@ -92,7 +92,7 @@ function recordClick(
             href: elt.getAttribute('href'),
             attributes,
         };
-        addGlobalClick({ url: url, elt: eltInfo });
+        addGlobalClick({ url: url, eltInfo });
         elt.removeEventListener('pointerup', logElement);
     });
 }
