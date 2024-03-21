@@ -2,6 +2,7 @@ import { createMemo, onCleanup, Show } from 'solid-js';
 import styles from './preview-guide.module.css';
 import { useGuideBuilder } from '../provider';
 import { GlobalClick } from '../../types/state';
+import { type Result, BaseError } from '../../utils/error';
 
 export default function PreviewGuide() {
     const [
@@ -82,76 +83,104 @@ function handleClick(
             console.error(new Error('url does not match'));
             return;
         }
-        let targetElt;
-        if (click.elt.id) {
-            targetElt = document.querySelector(click.elt.id);
-        } else if (click.elt.href) {
-            targetElt = document.querySelector(`[href="${click.elt.href}"]`);
-        } else {
-            if (click.elt.classList) {
-                let classList = '';
-                for (let i = 0; i < click.elt.classList.length; i++) {
-                    classList += '.' + click.elt.classList[i];
-                }
-                let elts: NodeListOf<Element> | Element[] = document.querySelectorAll(classList);
-                if (elts.length === 1 || click.elt.attributes === null) {
-                    targetElt = elts[0];
-                } else {
-                    for (let i = 0; i < click.elt.attributes.length; i++) {
-                        const attr = click.elt.attributes[i];
-                        let narrowedElts = [];
-                        for (let j = 0; j < elts.length; j++) {
-                            if (elts[j].getAttribute(attr[0]) === attr[1]) {
-                                narrowedElts.push(elts[j]);
-                            }
-                        }
-                        if (narrowedElts.length === 1) {
-                            targetElt = narrowedElts[0];
-                            break;
-                        }
-                        elts = narrowedElts;
-                    }
-                    if (elts.length === 1) {
-                        targetElt = elts[0];
-                    } else {
-                        console.error(new Error("Has classlist but couldn't narrow down elements by attributes"));
-                        return;
-                    }
-                }
-            } else if (click.elt.attributes) {
-                let elts: NodeListOf<Element> | Element[] = document.querySelectorAll(`[${click.elt.attributes[0][0]}="${click.elt.attributes[0][1]}"]`);
-                if (elts.length === 1) {
-                    targetElt = elts[0];
-                } else {
-                    for (let i = 1; i < click.elt.attributes.length; i++) {
-                        const attr = click.elt.attributes[i];
-                        let narrowedElts = [];
-                        for (let j = 0; j < elts.length; j++) {
-                            if (elts[j].getAttribute(attr[0]) === attr[1]) {
-                                narrowedElts.push(elts[j]);
-                            }
-                        }
-                        if (narrowedElts.length === 1) {
-                            targetElt = narrowedElts[0];
-                            break;
-                        }
-                        elts = narrowedElts;
-                    } 
-                    if (elts.length === 1) {
-                        targetElt = elts[0];
-                    } else {
-                        console.error(new Error("Has attributes but couldn't narrow down elements by attributes"));
-                        return;
-                    }
-                }
-            } else {
-                console.error(new Error('no id, classList, or attributes'));
-                return;
-            }
 
-        }
         console.log('click matches');
         incrementTabCurrentStep();
         e.target.removeEventListener('pointerup', logElement);
     });
+}
+
+//TODO: Check if element is in view
+function findElement(click: GlobalClick): Result<Element> {
+    const elt = document.querySelector(click.elt.selector);
+    if (elt) {
+        return { success: true, result: elt };
+    } else {
+        const err = new BaseError("couldn't find element by selector",
+            { context: { selector: click.elt.selector } },
+        );
+        console.warn(err);
+    }
+
+    let elts: NodeListOf<Element> | Element[] = []; 
+
+    if (click.elt.href) {
+        elts = document.querySelectorAll(`[href="${click.elt.href}"]`);
+        if (elts.length === 1) {
+            return { success: true, result: elts[0] };
+        }
+    } 
+
+    if (click.elt.classList) {
+        elts = narrowElementsByClassList(elts, click.elt.classList);
+    }
+
+    if (click.elt.attributes) {
+        elts = narrowElementsByAttributes(elts, click.elt.attributes);
+    }
+
+    if (elts.length === 1) {
+        return { success: true, result: elts[0] };
+    } else if (elts.length > 1) {
+        const err = new BaseError(
+            "multiple elements found by classList and attributes",
+            { context: { 
+                classList: click.elt.classList,
+                attributes: click.elt.attributes 
+            } },
+        );
+        return { success: false, error: err };
+    } else {
+        const err = new BaseError(
+            "no elements found by classList and attributes",
+            { context: { 
+                classList: click.elt.classList,
+                attributes: click.elt.attributes 
+            } },
+        );
+        return { success: false, error: err };
+    }
+}
+
+function narrowElementsByClassList(
+    elts: NodeListOf<Element> | Element[],
+    classList: string[],
+): NodeListOf<Element> | Element[] {
+    for (let i = 0; i < classList.length; i++) {
+        let narrowedElts = [];
+        for (let j = 0; j < elts.length; j++) {
+            if (elts[j].classList.contains(classList[i])) {
+                narrowedElts.push(elts[j]);
+            }
+        }
+        if (narrowedElts.length === 1) {
+            return [narrowedElts[0]];
+        }
+        if (narrowedElts.length > 1) {
+            elts = narrowedElts;
+        }
+    }
+    return elts;
+}
+
+function narrowElementsByAttributes(
+    elts: NodeListOf<Element> | Element[],
+    attributes: [string, string][],
+): NodeListOf<Element> | Element[] {
+    for (let i = 0; i < attributes.length; i++) {
+        const attr = attributes[i];
+        let narrowedElts = [];
+        for (let j = 0; j < elts.length; j++) {
+            if (elts[j].getAttribute(attr[0]) === attr[1]) {
+                narrowedElts.push(elts[j]);
+            }
+        }
+        if (narrowedElts.length === 1) {
+            return [narrowedElts[0]];
+        }
+        if (narrowedElts.length > 1) {
+            elts = narrowedElts;
+        }
+    }
+    return elts;
 }

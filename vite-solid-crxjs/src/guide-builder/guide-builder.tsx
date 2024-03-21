@@ -4,6 +4,7 @@ import FireRingClick from "./components/fire-ring-click";
 import PreviewGuide from "./components/preview-guide";
 import { useGuideBuilder } from './provider';
 import type { GlobalClick } from '../types/state';
+import { finder } from '@medv/finder';
 
 
 export default function GuideBuilder() {
@@ -82,8 +83,11 @@ function recordClick(
             attributes.push(attribute);
         }
 
+        const selector = finder(elt);
+
         const eltInfo = {
             id: elt.id === '' ? null : elt.id,
+            selector,
             classList,
             href: elt.getAttribute('href'),
             attributes,
@@ -92,3 +96,4 @@ function recordClick(
         elt.removeEventListener('pointerup', logElement);
     });
 }
+

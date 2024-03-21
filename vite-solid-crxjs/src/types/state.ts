@@ -4,6 +4,7 @@ export interface GlobalClick {
     url: string;
     elt: {
         id: string | null;
+        selector: string;
         classList: string[] | null;
         href: string | null;
         attributes: [string, string][];
