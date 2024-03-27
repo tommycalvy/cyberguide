@@ -9,7 +9,7 @@ export interface EltInfo {
 };
 
 export interface GlobalClick {
-    url: string;
+    location: string;
     eltInfo: EltInfo;
 };
 

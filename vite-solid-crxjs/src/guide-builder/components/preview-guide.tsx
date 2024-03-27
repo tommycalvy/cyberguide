@@ -1,4 +1,4 @@
-import { createMemo, createEffect, Show } from 'solid-js';
+import { createMemo, createSignal, createEffect, Show, onCleanup } from 'solid-js';
 import styles from './preview-guide.module.css';
 import { useGuideBuilder } from '../provider';
 import { EltInfo } from '../../types/state';
@@ -9,6 +9,13 @@ export default function PreviewGuide() {
         { global: { globalClicks }, tab: { tabCurrentStep } },
         { tab: { incrementTabCurrentStep } },
     ] = useGuideBuilder();
+
+    const [location, setLocation] = createSignal(window.location.href);
+
+    navigation.addEventListener('navigate', (event) => {
+        console.log('navigate', event.destination.url);
+        setLocation(event.destination.url);
+    });
 
     const elt = createMemo(() => {
         const clicks = globalClicks();
@@ -22,10 +29,10 @@ export default function PreviewGuide() {
             console.log('currentStep === clicksLength');
             return null;
         }
-        const url = window.location.href;
         const click = clicks[currentStep];
-        if (click.url !== url) {
-            console.warn('url does not match');
+        if (click.location !== location()) {
+            console.warn(click.location, ' !== ', location());
+            console.warn('location does not match');
             return null;
         }
         const eltResult = findElement(click.eltInfo);
@@ -43,12 +50,34 @@ export default function PreviewGuide() {
         }
         return null;
     });
+    let clickArea: HTMLDivElement | ((el: HTMLDivElement) => void) | undefined = undefined;
    
     createEffect(() => {
-        const targetElt = elt();
-        if (targetElt) {
-            handleClick(targetElt, incrementTabCurrentStep);
+        if (boundingRect() && clickArea instanceof HTMLDivElement) {
+            clickArea.scrollIntoView({ behavior: 'smooth' });
         }
+   //     const targetElt = elt();
+   //     if (targetElt) {
+   //         handleClick(targetElt, incrementTabCurrentStep);
+   //     }
+    });
+
+    function handlePointerDown(e: PointerEvent) {
+        if (e.target === elt()) {
+            document.addEventListener('pointerup', function handlePointerUp(e) {
+                if (e.target === elt()) {
+                    console.log('click matches heey');
+                    incrementTabCurrentStep();
+                }
+                document.removeEventListener('pointerup', handlePointerUp);
+            });
+        }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    onCleanup(() => {
+        document.removeEventListener('pointerdown', handlePointerDown);
     });
 
     return (
@@ -60,7 +89,7 @@ export default function PreviewGuide() {
                 left: `${boundingRect()?.left}px`,
                 width: `${boundingRect()?.width}px`,
                 height: `${boundingRect()?.height}px`,
-            }}>
+            }} ref={clickArea} >
             </div>
         </Show>
     );
@@ -80,10 +109,13 @@ function handleClick(
     });
 }
 
+
 //TODO: Check if element is in view
 function findElement(eltInfo: EltInfo): Result<Element> {
     const elt = document.querySelector(eltInfo.selector);
     if (elt) {
+        console.log('selector', eltInfo.selector);
+        console.log('found element by selector');
         return { success: true, result: elt };
     } else {
         const err = new BaseError("couldn't find element by selector",

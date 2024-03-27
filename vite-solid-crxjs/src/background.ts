@@ -68,7 +68,7 @@ class Background {
             });
 
             this.onMessageUpdateTabState('previewing');
-            this.onMessageUpdateTabState('currentStep');
+            this.onMessageUpdateTabState('current-step');
         });
     }
 
@@ -309,11 +309,11 @@ class Background {
                     throw new Error('tabState not found');
                 }
                 tabState.previewing = true;
-                const url = this.globalState.clicks[0].url;
-                if (!url) {
+                const eltLocation = this.globalState.clicks[0].location;
+                if (!eltLocation) {
                     throw new Error('url not found');
                 }
-                browser.tabs.update(parseInt(tabId), { url });
+                browser.tabs.update(parseInt(tabId), { url: eltLocation });
             }
             browser.storage.local.set({ [tabId]: message.data });
         });

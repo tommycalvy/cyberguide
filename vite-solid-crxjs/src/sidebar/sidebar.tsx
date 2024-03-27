@@ -23,6 +23,9 @@ export default function Sidebar() {
                 lastClickStep?.scrollIntoView({ behavior: 'smooth' });
             } 
         }
+        if (tabCurrentStep()) {
+            console.log('tabCurrentStep:', tabCurrentStep());
+        }
     });
 
     return (
@@ -43,7 +46,7 @@ export default function Sidebar() {
                         ref={lastClickStep}
                     >
                         <p>{`${i() + 1})`}</p> 
-                        <p class={styles.action__url}>{action.url}</p>
+                        <p class={styles.action__url}>{action.location}</p>
                     </div>
                 }</For>
             </div>

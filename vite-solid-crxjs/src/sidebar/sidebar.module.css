@@ -31,12 +31,13 @@
     color: #fff;
     background-color: #37383d;
     border-radius: 0.5rem;
+    border: 2px solid #37383d;
 }
 
 .selected {
-    border-color: #fff;
+    background-color: #575961;
+    border-color: white
 }
-
 .action__url {
     text-overflow: ellipsis;
     overflow: hidden;

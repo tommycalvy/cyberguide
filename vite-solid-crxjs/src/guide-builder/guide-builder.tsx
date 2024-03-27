@@ -51,16 +51,13 @@ function recordClick(
             console.error(new Error('not an Element'));
             return;
         }
-        if (elt.hasAttributes()) {
-            console.log('attributes', elt.attributes);
+
+        const location = window.location.href;
+        if (location === '') {
+            console.error(new Error('location is empty'));
+            return;
         }
-        console.log(elt.classList);
-        console.log(elt.id === '');
-        let url = window.location.href;
-        console.log(url);
-        if (url === null) {
-            console.error(new Error('url is null'));
-        }
+
         let classList: string[] | null = null;
         if (elt.classList.length > 0) {
             classList = [];
@@ -84,6 +81,7 @@ function recordClick(
         }
 
         const selector = finder(elt);
+        console.log('selector:', selector);
 
         const eltInfo = {
             id: elt.id === '' ? null : elt.id,
@@ -92,7 +90,7 @@ function recordClick(
             href: elt.getAttribute('href'),
             attributes,
         };
-        addGlobalClick({ url: url, eltInfo });
+        addGlobalClick({ location, eltInfo });
         elt.removeEventListener('pointerup', logElement);
     });
 }
