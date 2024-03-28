@@ -26,29 +26,15 @@ export default function useTabPreviewing(backgroundPort: Port) {
         }
     });
 
-    function startTabPreviewing() {
-        setTabPreviewing(true);
+    function changeTabPreviewing(tabPreviewing: boolean) {
+        setTabPreviewing(tabPreviewing);
         const sendResult = backgroundPort.send({ 
             type: messageType, 
-            data: true,
+            data: tabPreviewing,
         });
         if (!sendResult.success) {
             throw new Error(
-                'backgroundPort.send failed in startTabPreviewing', 
-                { cause: sendResult.error },
-            );
-        }
-    }
-
-    function stopTabPreviewing() {
-        setTabPreviewing(false);
-        const sendResult = backgroundPort.send({ 
-            type: messageType, 
-            data: false,
-        });
-        if (!sendResult.success) {
-            throw new Error(
-                'backgroundPort.send failed in stopTabPreviewing', 
+                'backgroundPort.send failed in setTabPreviewing', 
                 { cause: sendResult.error },
             );
         }
@@ -57,7 +43,6 @@ export default function useTabPreviewing(backgroundPort: Port) {
     return { 
         tabPreviewing,
         initTabPreviewing,
-        startTabPreviewing,
-        stopTabPreviewing
+        changeTabPreviewing,
     };
 }

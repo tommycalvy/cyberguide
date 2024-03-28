@@ -14,7 +14,9 @@ export default function PreviewGuide() {
 
     navigation.addEventListener('navigate', (event) => {
         console.log('navigate', event.destination.url);
-        setLocation(event.destination.url);
+        setTimeout(() => {
+            setLocation(event.destination.url);
+        }, 500);
     });
 
     const elt = createMemo(() => {
@@ -35,13 +37,16 @@ export default function PreviewGuide() {
             console.warn('location does not match');
             return null;
         }
+        console.log('location matches');
+        console.log(click.location, ' === ', location());
         const eltResult = findElement(click.eltInfo);
         if (!eltResult.success) {
             console.error(eltResult.error);
             return null;
         }
+        console.log('element:', eltResult.result);
         return eltResult.result;
-    });
+    }, { equals: false });
 
     const boundingRect = createMemo(() => {
         const targetElt = elt();
@@ -63,14 +68,20 @@ export default function PreviewGuide() {
     });
 
     function handlePointerDown(e: PointerEvent) {
+        console.log('pointerdown');
         if (e.target === elt()) {
             document.addEventListener('pointerup', function handlePointerUp(e) {
+                console.log('pointerup');
                 if (e.target === elt()) {
                     console.log('click matches heey');
                     incrementTabCurrentStep();
+                } else {
+                    console.log('click does not match on up');
                 }
                 document.removeEventListener('pointerup', handlePointerUp);
             });
+        } else {
+            console.log('click does not match');
         }
     }
 

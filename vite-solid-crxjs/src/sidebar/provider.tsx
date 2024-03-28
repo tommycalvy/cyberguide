@@ -87,14 +87,23 @@ export function SidebarProvider(props: { children: any }) {
     const {
         tabPreviewing,
         initTabPreviewing,
-        startTabPreviewing,
-        stopTabPreviewing,
+        changeTabPreviewing,
     } = useTabPreviewing(backgroundPort);
 
     const {
         tabCurrentStep,
         initTabCurrentStep,
+        resetTabCurrentStep,
     } = useTabCurrentStep(backgroundPort);
+
+    function startTabPreviewing() {
+        changeTabPreviewing(true);
+    }
+
+    function stopTabPreviewing() {
+        changeTabPreviewing(false);
+        resetTabCurrentStep();
+    }
 
     backgroundPort.setMessageListener('init', (msg) => {
         const state = msg.data;

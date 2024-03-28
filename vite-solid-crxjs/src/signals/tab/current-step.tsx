@@ -19,7 +19,11 @@ export default function useTabCurrentStep(backgroundPort: Port) {
 
     backgroundPort.setMessageListener(messageType, (msg) => {
         if (msg.data) {
-            setTabCurrentStep((currentStep: number) => currentStep + 1);
+            if (msg.data === 'increment') {
+                setTabCurrentStep((currentStep: number) => currentStep + 1);
+            } else if (msg.data === 'reset') {
+                setTabCurrentStep(0);
+            }
         } else {
             throw new Error('On update tabCurrentStep not found in message');
         }
@@ -29,7 +33,7 @@ export default function useTabCurrentStep(backgroundPort: Port) {
         setTabCurrentStep((currentStep: number) => currentStep + 1);
         const sendResult = backgroundPort.send({ 
             type: messageType, 
-            data: true, //Sending true to increment the current step
+            data: 'increment',
         });
         if (!sendResult.success) {
             throw new Error(
@@ -39,5 +43,24 @@ export default function useTabCurrentStep(backgroundPort: Port) {
         }
     }
 
-    return { tabCurrentStep, initTabCurrentStep, incrementTabCurrentStep };
+    function resetTabCurrentStep() {
+        setTabCurrentStep(0);
+        const sendResult = backgroundPort.send({ 
+            type: messageType, 
+            data: 'reset', 
+        });
+        if (!sendResult.success) {
+            throw new Error(
+                'backgroundPort.send failed in resetTabCurrentStep', 
+                { cause: sendResult.error },
+            );
+        }
+    }
+
+    return { 
+        tabCurrentStep,
+        initTabCurrentStep,
+        incrementTabCurrentStep,
+        resetTabCurrentStep,
+    };
 }
