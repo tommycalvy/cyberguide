@@ -1,9 +1,7 @@
 import BrowserStorage from "../utils/browser-storage.js"; 
 import Port from "../utils/message-producer.js";
 import modernNormalizeCss from "../lib/modern-normalize-css.js";
-import cssScopeInlineShadow from "../lib/css-scope-inline-shadow.js";
 
-let widgetActive = new BrowserStorage("local", "widgetActive", true);
 let recordingActive = new BrowserStorage("local", "recordingActive");
 
 const bport = new Port("widget", true);
@@ -16,63 +14,72 @@ const wRecordButtonText = await recordingActive.get()  ? "Stop" : "Record";
 console.log("wRecordButtonText: ", wRecordButtonText);
 const shadowHost = document.createElement("div");
 const shadowRoot = shadowHost.attachShadow({ mode: "open" });
-cssScopeInlineShadow(shadowRoot);
 
 shadowRoot.innerHTML = ` 
-    <div id="widget">
+<div id="widget">
+    <button id="widget-move">
+        M
         <style>
-            me {
-                position: fixed;
-                top: 5rem;
-                right: 5rem;
-                z-index: 999999;
-                background-color: #00FFFFCC;
-                width: 20rem;
-                height: 18rem;
-                display: flex;
-                align-items: center;
-                flex-direction: column;
-                justify-content: space-between;
-                padding-bottom: 1rem;
-                overflow: hidden;
-                border: 0.2rem solid #87CEEBCC;
-                border-radius: 1rem;
-                transition: opacity 75ms ease-out;
+            #widget-move { 
+                cursor: grab;
+                width: 100%;
+                background-color: #FFFFFFCC;
+                border: none;
             }
-            me button {
-                color: black;
-                font-weight: bold;
-                height: 4rem;
-                select: none;
-            }
+            #widget-move:hover { background-color: #F5F5F5CC; }
         </style>
-            <button id="widget-move">
-                <style>
-                    me { cursor: grab; width: 100%; background-color: #FFFFFF;}
-                    me:hover { background-color: #F5F5F5; }
-                </style>
-                M
-            </button>
-            <button id="widget-record">
-                <style>
-                    me { width: 5.5rem; background-color: #FF0000; }
-                    me:hover { background-color: #8B0000; }
-                </style>
-                ${wRecordButtonText}
-            </button>
-            <button id="widget-close">
-                <style>
-                    me {
-                        background-color: #FFFFFF;
-                        width: 4rem;
-                        border: 0.2rem solid #000000;
-                        border-radius: 50%;
-                    }
-                    me:hover { background-color: #F5F5F5; }
-                </style>
-                X
-            </button>
-    </div>
+    </button>
+    <button id="widget-record">
+        ${wRecordButtonText}
+        <style>
+            #widget-record { 
+                width: 5.5rem;
+                background-color: #FF0000CC;
+                cursor: pointer;
+            }
+            #widget-record:hover { background-color: #8B0000CC; }
+        </style>
+    </button>
+    <button id="widget-close">
+        X
+        <style>
+            #widget-close {
+                background-color: #FFFFFFCC;
+                width: 4rem;
+                border: 0.2rem solid #000000;
+                border-radius: 50%;
+                cursor: pointer;
+            }
+            #widget-close:hover { background-color: #F5F5F5CC; }
+        </style>
+    </button>
+    <style>
+        #widget {
+            position: fixed;
+            top: 5rem;
+            right: 5rem;
+            z-index: 999999;
+            background-color: #00FFFFCC;
+            width: 6rem;
+            height: 18rem;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-bottom: 1rem;
+            overflow: hidden;
+            border: 0.2rem solid #87CEEBCC;
+            border-radius: 3rem;
+            transition: opacity 75ms ease-out;
+        }
+        #widget button {
+            color: black;
+            font-weight: bold;
+            height: 4rem;
+            select: none;
+        }
+    </style>
+</div>
 `;
 
 shadowRoot.adoptedStyleSheets = [modernNormalizeCss];
@@ -91,7 +98,7 @@ if (widgetClose == null) {
 
 widgetClose.addEventListener("click", async () => {
     shadowHost.remove();
-    await widgetActive.set(false);
+    bport.postMessage({ type: "widget-closed" });
 });
 
 dragElement(widget);
@@ -152,6 +159,7 @@ function dragElement(elt) {
         elt.style.top = (elt.offsetTop - pos2) + "px";
         elt.style.left = (elt.offsetLeft - pos1) + "px";
         elt.style.opacity = "0.5";
+        elt.style.cursor = "grabbing";
     }
 
     function closeDragElement() {

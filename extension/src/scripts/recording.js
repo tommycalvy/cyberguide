@@ -2,7 +2,6 @@ import BrowserStorage from "../utils/browser-storage.js";
 import ArrayStorage from "../utils/array-storage.js";
 import Port from "../utils/message-producer.js";
 import modernNormalizeCss from '../lib/modern-normalize-css.js';
-import cssScopeInlineShadow from '../lib/css-scope-inline-shadow.js';
 
 const recordingActive = new BrowserStorage("local", "recordingActive");
 const recordedElts = new ArrayStorage("local", "recordedElts");
@@ -11,12 +10,30 @@ if (!await recordingActive.get()) {
 
     const shadowHost = document.createElement('div');
     const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
-    cssScopeInlineShadow(shadowRoot);
 
     shadowRoot.innerHTML = `
         <div id="count-down">
+            <div id="count-down-circle">
+                <div id="count-down-number">3</div>
+                <style>
+                    #count-down-circle {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 24rem;
+                        height: 24rem;
+                        background-color: #FFFFFF;
+                        border-radius: 50%;
+                    }
+                    #count-down-circle div {
+                        color: #000000;
+                        font-size: 12rem;
+                        font-weight: bold;
+                    }
+                </style>
+            </div>
             <style>
-                me {
+                #count-down {
                     position: fixed;
                     width: 100%;
                     height: 100%;
@@ -29,25 +46,6 @@ if (!await recordingActive.get()) {
                     justify-content: center;
                 }
             </style>
-            <div>
-                <style>
-                    me {
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        width: 24rem;
-                        height: 24rem;
-                        background-color: #FFFFFF;
-                        border-radius: 50%;
-                    }
-                    me div {
-                        color: #000000;
-                        font-size: 12rem;
-                        font-weight: bold;
-                    }
-                </style>
-                <div id="count-down-number">3</div>
-            </div>
         </div>
     `;
 
@@ -108,7 +106,7 @@ function recordClick(e) {
             url: url,
             elt: e.target
         };
-        recordedElts.pushUnique(recordedElt);
+        recordedElts.pushUnique(Promise.resolve(recordedElt));
         e.target.removeEventListener('pointerup', logElement);
     });
 }
@@ -116,15 +114,11 @@ function recordClick(e) {
 document.addEventListener('pointerdown', recordClick);
 
 const bport = new Port("recording");
-
-bport.postMessage({
-    type: "init",
-    message: "recording script connected"
-});
+bport.postMessage({ type: "handle-init" });
 
 let tabId = null;
 
-bport.onMessage("handle-init", (msg) => {
+bport.onMessage("init", (msg) => {
     console.log("background.js: ", msg.message);
     if (!msg.data.tabId) {
         throw new Error("No tabId in init message");
@@ -137,7 +131,7 @@ bport.onMessage("stop-recording", () => {
     document.removeEventListener('pointerdown', recordClick);
     bport.postMessage({
         type: "recording-script-shutdown",
-        tabId: tabId
+        data: { tabId: tabId },
     });
     bport.disconnect();
 });

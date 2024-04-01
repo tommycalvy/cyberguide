@@ -4,15 +4,35 @@
     <title>CyberGuide - Popup</title>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="../lib/modern-normalize.css">
-    <script src="../lib/css-scope-inline.js"></script>
-    <script src="../utils/message-producer.js"></script>
+    <script src="../utils/message-producer.js" defer></script>
     <script src="popup.js" defer></script>
 </head>
 <body>
-    <style> me { width: 40rem; } </style>
-    <div>
+    <div id="button-row">
+        <h1>CyberGuide</h1>
+        <button id="record-button">
+            Record
+            <style>
+                #record-button { background-color: #f00; }
+                #record-button:hover { background-color: #f55; }
+            </style>
+        </button>
+        <button id="widget-toggle">
+            Show Widget
+            <style>
+                #widget-toggle { background-color: #0f0; }
+                #widget-toggle:hover { background-color: #5f5; }
+            </style>
+        </button>
+        <button id="settings-button">
+            Settings
+            <style>
+                #settings-button { background-color: #f60; }
+                #settings-button:hover { background-color: #f90; }
+            </style>
+        </button>
         <style>
-            me { 
+            #button-row { 
                 width: 100%; 
                 display: flex;
                 justify-content: center;
@@ -20,7 +40,7 @@
                 gap: 2rem;
                 padding: 1rem 2rem 0e 2rem;
             }
-            me button { 
+            #button-row button { 
                 padding: 0.5rem 1rem;
                 border-radius: 1rem;
                 border: 0.2rem solid black;
@@ -30,33 +50,12 @@
                 cursor: pointer;
             }
         </style>
-
-        <h1>CyberGuide</h1>
-        <button id="record-button">
-            <style>
-                me { background-color: #f00; }
-                me:hover { background-color: #f55; }
-            </style>
-            Record
-        </button>
-        <button id="widget-toggle">
-            <style>
-                me { background-color: #0f0; }
-                me:hover { background-color: #5f5; }
-            </style>
-            Show Widget
-        </button>
-        <button>
-            <style>
-                me { background-color: #f60; }
-                me:hover { background-color: #f90; }
-            </style>
-            Settings
-        </button>
     </div>
-    <div>
+    <div id="error-and-version">
+        <p id="error-message"></p>
+        <p>Version 0.0.1</p>
         <style>
-            me { 
+            #error-and-version { 
                 width: 100%;
                 display: flex;
                 justify-content: space-between;
@@ -64,10 +63,12 @@
                 padding: 0 1rem;
                 height: 2rem;
             }
-            me #error-message { color: red; font-weight: bold; }
+            #error-and-version #error-message { 
+                color: red;
+                font-weight: bold;
+            }
         </style>
-        <p id="error-message"></p>
-        <p>Version 0.0.1</p>
     </div>
+    <style> body { width: 40rem; } </style>
 </body>
 </html>

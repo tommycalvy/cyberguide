@@ -22,7 +22,7 @@ class BrowserStorage {
             default:
                 throw new Error(`Unknown storage type: ${type}`);
         }
-        if (value) {
+        if (value !== null) {
             this.set(value);
         }
     }

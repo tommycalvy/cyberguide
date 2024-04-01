@@ -47,7 +47,7 @@ class MessageListener {
             }); 
         });
     }
-
+    //TODO: add Global Listener so that all ports can listen to a message
     /**
         * @param {string} portName
         * @memberof MessageListener
