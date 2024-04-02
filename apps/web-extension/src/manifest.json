@@ -1,0 +1,21 @@
+{
+    "manifest_version": 3,
+    "name": "CyberGuide Chrome Extension",
+    "description": "Your personal guide through cyberspace!",
+    "version": "0.0.1",
+    "icons": {
+        "16": "icons/flame-16.png",
+        "48": "icons/hermit-48.png",
+        "128": "icons/hermit-128.png"
+    },
+    "action": {
+        "default_title": "CyberGuide",
+    },
+    "permissions": ["storage", "sidePanel", "activeTab", "scripting"],
+    "optional_permissions": ["tabs"],
+    "optional_host_permissions": ["<all_urls>"],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    }
+}

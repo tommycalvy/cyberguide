@@ -1,0 +1,7 @@
+.click-area {
+    position: fixed;
+    pointer-events: none;
+    background-color: #00000000;
+    border: 2px solid red;
+    z-index: 999999;
+}

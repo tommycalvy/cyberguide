@@ -4,3 +4,5 @@
 .nx/cache
 
 node_modules
+
+dist/
