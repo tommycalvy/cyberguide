@@ -14,6 +14,14 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "plugins": [
+      {
+        "name": "typescript-plugin-css-modules"
+      }
+    ],
+    "paths": {
+      "error-handling": ["libs/shared/src/index.js"]
+    }
   },
+  "exclude": ["node_modules"]
 }

@@ -12,6 +12,9 @@ import { BaseError } from "./error";
 //type DisconnectListener = (port: Port) => void;
 //type MessageListener = (message: Message, port: Port) => void;
 
+/** Class that listens and provides utilities for communication between
+*   background scripts, content scripts, popup scripts, and the sidebar.
+*/
 export default class GlobalListener {
 
     //private _allowedChannels: Set<ChannelName>;
@@ -24,7 +27,11 @@ export default class GlobalListener {
     //private channel_ports: Map<ChannelName, Set<Port>>;
     //private tab_ports: Map<TabId, Set<Port>>;
 
-    constructor(allowedChannels: ChannelName[] = ['sb', 'gb']) {
+    /**
+        * @param allowedChannels - An array of channel names that the 
+        * listener will accept.
+    */
+    constructor(allowedChannels = ['sb', 'gb']) {
 
         this._allowedChannels = new Set(allowedChannels);
 
@@ -36,13 +43,19 @@ export default class GlobalListener {
         this.channel_ports = new Map();
         this.tab_ports = new Map();
 
-        this.startListening((err) => {
+        this.#startListening((err) => {
             console.warn(err.message);
             console.warn(err.context);
         });
     }
 
-    private startListening(onError: (err: BaseError) => void) {
+    /**
+    * @param onError - A function that will be called if an error occurs
+    * while setting up the listener.
+    * @returns void
+    * @private
+    */
+    #startListening(onError: (err: BaseError) => void) {
         browser.runtime.onConnect.addListener((port) => {
 
             const channelName = port.name.split('-')[0];
@@ -104,7 +117,7 @@ export default class GlobalListener {
         });
     }
 
-    private getTabId(port: browser.Runtime.Port): Result<TabId> {
+    getTabId(port: browser.Runtime.Port): Result<TabId> {
         let tabId = port.sender?.tab?.id?.toString();
         if (tabId) {
             return { success: true, result: tabId };
@@ -119,19 +132,19 @@ export default class GlobalListener {
         return { success: false, error: err };
     }
 
-    public onConnect(listener: ConnectListener) {
+    onConnect(listener: ConnectListener) {
         this.connectListener = listener;
     }
 
-    public onDisconnect(listener: DisconnectListener) {
+    onDisconnect(listener: DisconnectListener) {
         this.disconnectListener = listener;
     }
 
-    public onMessage(messageType: MessageType, listener: MessageListener) {
+    onMessage(messageType: MessageType, listener: MessageListener) {
         this.messageListeners.set(messageType, listener);
     }
 
-    public sendToPort(portName: PortName, message: Message): Result<null> {
+    sendToPort(portName: PortName, message: Message): Result<null> {
         const port = this.ports.get(portName);
         if (port) {
             port.port.postMessage(message);
@@ -144,7 +157,7 @@ export default class GlobalListener {
         }
     }
 
-    public sendToChannel(
+    sendToChannel(
         channelName: ChannelName,
         message: Message,
         except?: TabId,
@@ -165,7 +178,7 @@ export default class GlobalListener {
         }
     }
 
-    public sendToTab(
+    sendToTab(
         tabId: TabId,
         message: Message,
         except?: ChannelName
@@ -186,7 +199,7 @@ export default class GlobalListener {
         }
     }
 
-    public sendToAll(message: Message, except?: PortName): Result<null> {
+    sendToAll(message: Message, except?: PortName): Result<null> {
         this.ports.forEach((port) => {
             if (port.name !== except) {
                 port.port.postMessage(message);
@@ -195,7 +208,7 @@ export default class GlobalListener {
         return { success: true, result: null };
     }
 
-    public get allowedChannels() {
+    get allowedChannels() {
         return this._allowedChannels;
     }
 }
