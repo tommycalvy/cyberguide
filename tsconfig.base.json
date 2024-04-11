@@ -20,7 +20,8 @@
       }
     ],
     "paths": {
-      "error-handling": ["libs/shared/src/index.js"]
+      "error-handling": ["libs/shared/src/index.js"],
+      "global-listener": ["web-extension/global-listener/src/index.js"]
     }
   },
   "exclude": ["node_modules"]

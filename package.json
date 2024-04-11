@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Your personal guide through cyber space",
   "author": "Thomas L. Calvy",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@nx/eslint": "18.2.1",
     "@nx/eslint-plugin": "18.2.1",
