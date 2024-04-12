@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "types": ["vite/client", "chrome", "path"],
+    "types": ["vite/client", "path"],
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
@@ -20,8 +20,13 @@
       }
     ],
     "paths": {
-      "error-handling": ["libs/shared/src/index.js"],
-      "global-listener": ["web-extension/global-listener/src/index.js"]
+      "@cyberguide/shared/error-handling": [
+        "libs/shared/error-handling/src/index.js"
+      ],
+      "@cyberguide/web-extension/global-listener": [
+        "libs/web-extension/global-listener/src/index.js"
+      ],
+      "@cyberguide/types/shared": ["libs/shared/types/src/index.js"]
     }
   },
   "exclude": ["node_modules"]

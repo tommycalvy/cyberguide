@@ -11,7 +11,7 @@ export class BaseError extends Error {
      * @param {import('./types').Jsonable} [options.context] 
         * - The context of the error, should be JSON serializable.
     */
-    constructor( message, { cause, context } = {}) {
+    constructor(message, { cause, context } = {}) {
 
         super(message, { cause });
         this.name = this.constructor.name;
