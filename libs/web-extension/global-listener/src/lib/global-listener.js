@@ -1,31 +1,14 @@
 import browser from 'webextension-polyfill';
 import { BaseError } from '@cyberguide/shared/error-handling'; 
 
-//interface Port {
-//    name: PortName;
-//    port: browser.Runtime.Port;
-//    channelName: ChannelName;
-//    tabId: TabId;
-//}
-//
-//type ConnectListener = (port: Port) => void;
-//type DisconnectListener = (port: Port) => void;
-//type MessageListener = (message: Message, port: Port) => void;
-
 /** Class that listens and provides utilities for communication between
 *   background scripts, content scripts, popup scripts, and the sidebar.
 */
-export default class GlobalListener {
+export class GlobalListener {
 
-    //private _allowedChannels: Set<ChannelName>;
-    //
-    //private connectListener: ConnectListener;
-    //private messageListeners: Map<MessageType, MessageListener>;
-    //private disconnectListener: DisconnectListener;
-
-    //private ports: Map<PortName, Port>;
-    //private channel_ports: Map<ChannelName, Set<Port>>;
-    //private tab_ports: Map<TabId, Set<Port>>;
+    /** @typedef {string} PortName */
+    /** @typedef {string} ChannelName */
+    /** @typedef {string} TabId */
 
     /**
         * @param allowedChannels - An array of channel names that the 
@@ -35,12 +18,22 @@ export default class GlobalListener {
 
         this._allowedChannels = new Set(allowedChannels);
 
-        this.connectListener = () => {};
-        this.messageListeners = new Map();
-        this.disconnectListener = () => {};
+        /** @type {((port: import('./types').Port) => void)|null} */
+        this.connectListener = null;
 
+        /** @type {Map<string, import('./types').MessageListener>} */
+        this.messageListeners = new Map();
+
+        /** @type {((port: import('./types').Port) => void)|null} */
+        this.disconnectListener = null;
+
+        /** @type {Map<PortName, import('./types').Port>} */
         this.ports = new Map();
+
+        /** @type {Map<ChannelName, Set<import('./types').Port>>} */
         this.channel_ports = new Map();
+
+        /** @type {Map<TabId, Set<import('./types').Port>>} */
         this.tab_ports = new Map();
 
         this.startListening((err) => {
@@ -51,7 +44,7 @@ export default class GlobalListener {
 
     /**
     * @param {(err: BaseError) => void} errorCallback 
-    * A function that's called if an error occurs while setting up the listener.
+    * A function that's called if an error occurs while setting up the listener
     * @returns void
     * @private
     */
@@ -94,7 +87,12 @@ export default class GlobalListener {
                 tab.add(newPort);
             }
 
-            this.connectListener(newPort);
+            if (this.connectListener) {
+                this.connectListener(newPort);
+            } else {
+                const err = new BaseError('No connect listener');
+                errorCallback(err);
+            }
 
             port.onMessage.addListener((msg) => {
                 const messageListener = this.messageListeners.get(msg.type);
@@ -112,7 +110,12 @@ export default class GlobalListener {
                 this.ports.delete(portName);
                 this.channel_ports.get(channelName)?.delete(newPort);
                 this.tab_ports.get(tabId)?.delete(newPort);
-                this.disconnectListener(newPort);
+                if (this.disconnectListener) {
+                    this.disconnectListener(newPort);
+                } else {
+                    const err = new BaseError('No disconnect listener');
+                    errorCallback(err);
+                }
             });
         });
     }
@@ -137,19 +140,37 @@ export default class GlobalListener {
         return { success: false, error: err };
     }
 
-    onConnect(listener: ConnectListener) {
-        this.connectListener = listener;
+    /**
+        * @param {(port: import('./types').Port) => void} connectListener
+        * @returns void
+    */
+    onConnect(connectListener) {
+        this.connectListener = connectListener;
     }
 
-    onDisconnect(listener: DisconnectListener) {
-        this.disconnectListener = listener;
+    /**
+        * @param {(port: import('./types').Port) => void} disconnectListener
+        * @returns void
+    */
+    onDisconnect(disconnectListener) {
+        this.disconnectListener = disconnectListener;
     }
 
-    onMessage(messageType: MessageType, listener: MessageListener) {
-        this.messageListeners.set(messageType, listener);
+    /**
+        * @param {string} messageType
+        * @param {import('./types').MessageListener} messageListener
+        * @returns void
+    */
+    onMessage(messageType, messageListener) {
+        this.messageListeners.set(messageType, messageListener);
     }
 
-    sendToPort(portName: PortName, message: Message): Result<null> {
+    /**
+        * @param {string} portName
+        * @param {import('./types').Message} message
+        * @returns {import('@cyberguide/types/shared').Result<null>}
+    */
+    sendToPort(portName, message) {
         const port = this.ports.get(portName);
         if (port) {
             port.port.postMessage(message);
@@ -162,11 +183,13 @@ export default class GlobalListener {
         }
     }
 
-    sendToChannel(
-        channelName: ChannelName,
-        message: Message,
-        except?: TabId,
-    ): Result<null> {
+    /**
+        * @param {string} channelName
+        * @param {import('./types').Message} message
+        * @param {string} [except]
+        * @returns {import('@cyberguide/types/shared').Result<null>}
+    */
+    sendToChannel(channelName, message, except) {
         const ports = this.channel_ports.get(channelName);
         if (ports) {
             ports.forEach((port) => {
@@ -183,11 +206,13 @@ export default class GlobalListener {
         }
     }
 
-    sendToTab(
-        tabId: TabId,
-        message: Message,
-        except?: ChannelName
-    ): Result<null> {
+    /**
+        * @param {string} tabId
+        * @param {import('./types').Message} message
+        * @param {string} [except]
+        * @returns {import('@cyberguide/types/shared').Result<null>}
+    */
+    sendToTab(tabId, message, except) {
         const ports = this.tab_ports.get(tabId);
         if (ports) {
             ports.forEach((port) => {
@@ -204,7 +229,12 @@ export default class GlobalListener {
         }
     }
 
-    sendToAll(message: Message, except?: PortName): Result<null> {
+    /**
+        * @param {import('./types').Message} message
+        * @param {string} [except]
+        * @returns {import('@cyberguide/types/shared').Result<null>}
+    */
+    sendToAll(message, except) {
         this.ports.forEach((port) => {
             if (port.name !== except) {
                 port.port.postMessage(message);

@@ -1,17 +1,8 @@
 {
-    "name": "error-handling",
-    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "libs/shared/error-handling/src",
-    "projectType": "library",
-    "tags": [],
-    "targets": {
-        "test": {
-            "executor": "@nrwl/jest:jest",
-            "outputs": ["coverage/libs/shared/error-handling"],
-            "options": {
-                "jestConfig": "libs/shared/error-handling/jest.config.js",
-                "passWithNoTests": true
-            }
-        },
-    }
+  "name": "error-handling",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/error-handling/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {},
 }

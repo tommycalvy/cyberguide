@@ -4,6 +4,5 @@
   "sourceRoot": "libs/web-extension/global-listener/src",
   "projectType": "library",
   "tags": [],
-  "// targets": "to see all targets run: nx show project global-listener --web",
-  "targets": {}
+  "targets": {},
 }
