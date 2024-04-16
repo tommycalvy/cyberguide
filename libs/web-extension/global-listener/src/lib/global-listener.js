@@ -16,50 +16,45 @@ export class GlobalListener {
     */
     constructor(allowedChannels = ['sb', 'gb']) {
 
+        /** @type {Set<ChannelName>} */
         this._allowedChannels = new Set(allowedChannels);
 
         /** @type {((port: import('./types').Port) => void)|null} */
-        this.connectListener = null;
-
-        /** @type {Map<string, import('./types').MessageListener>} */
-        this.messageListeners = new Map();
+        this._connectListener = null;
 
         /** @type {((port: import('./types').Port) => void)|null} */
-        this.disconnectListener = null;
+        this._disconnectListener = null;
+
+        /** @type {Map<string, import('./types').MessageListener>} */
+        this._messageListeners = new Map();
 
         /** @type {Map<PortName, import('./types').Port>} */
-        this.ports = new Map();
+        this._ports = new Map();
 
         /** @type {Map<ChannelName, Set<import('./types').Port>>} */
-        this.channel_ports = new Map();
+        this._channel_ports = new Map();
 
         /** @type {Map<TabId, Set<import('./types').Port>>} */
-        this.tab_ports = new Map();
-
-        this.startListening((err) => {
-            console.warn(err.message);
-            console.warn(err.context);
-        });
+        this._tab_ports = new Map();
     }
 
     /**
     * @param {(err: BaseError) => void} errorCallback 
     * A function that's called if an error occurs while setting up the listener
     * @returns void
-    * @private
     */
     startListening(errorCallback) {
         browser.runtime.onConnect.addListener((port) => {
 
             const channelName = port.name.split('-')[0];
-            if (!this.allowedChannels.has(channelName)) {
+            if (!this._allowedChannels.has(channelName)) {
                 const err = new BaseError('Invalid channel', { 
                     context: { channelName } 
                 });
                 return errorCallback(err);
             }
 
-            const tabIdResult = this.getTabId(port);
+            const tabIdResult = this._getTabId(port);
             if (!tabIdResult.success) {
                 const err = new BaseError('GlobalListener.getTabId failed', {
                     cause: tabIdResult.error 
@@ -71,31 +66,31 @@ export class GlobalListener {
             const portName = channelName + '-' + tabId;
             const newPort = { name: portName, port, channelName, tabId };
 
-            this.ports.set(portName, newPort);
+            this._ports.set(portName, newPort);
 
-            const channel = this.channel_ports.get(channelName); 
+            const channel = this._channel_ports.get(channelName); 
             if (!channel) {
-                this.channel_ports.set(channelName, new Set());
+                this._channel_ports.set(channelName, new Set());
             } else {
                 channel.add(newPort);
             }
 
-            const tab = this.tab_ports.get(tabId);
+            const tab = this._tab_ports.get(tabId);
             if (!tab) {
-                this.tab_ports.set(tabId, new Set([newPort]));
+                this._tab_ports.set(tabId, new Set([newPort]));
             } else {
                 tab.add(newPort);
             }
 
-            if (this.connectListener) {
-                this.connectListener(newPort);
+            if (this._connectListener) {
+                this._connectListener(newPort);
             } else {
                 const err = new BaseError('No connect listener');
                 errorCallback(err);
             }
 
             port.onMessage.addListener((msg) => {
-                const messageListener = this.messageListeners.get(msg.type);
+                const messageListener = this._messageListeners.get(msg.type);
                 if (messageListener) {
                     messageListener(msg, newPort);
                 } else {
@@ -107,11 +102,11 @@ export class GlobalListener {
             });
 
             port.onDisconnect.addListener(() => {
-                this.ports.delete(portName);
-                this.channel_ports.get(channelName)?.delete(newPort);
-                this.tab_ports.get(tabId)?.delete(newPort);
-                if (this.disconnectListener) {
-                    this.disconnectListener(newPort);
+                this._ports.delete(portName);
+                this._channel_ports.get(channelName)?.delete(newPort);
+                this._tab_ports.get(tabId)?.delete(newPort);
+                if (this._disconnectListener) {
+                    this._disconnectListener(newPort);
                 } else {
                     const err = new BaseError('No disconnect listener');
                     errorCallback(err);
@@ -125,7 +120,7 @@ export class GlobalListener {
         * @returns {import('@cyberguide/types/shared').Result<string>}
         * @private
     */
-    getTabId(port) {
+    _getTabId(port) {
         let tabId = port.sender?.tab?.id?.toString();
         if (tabId) {
             return { success: true, result: tabId };
@@ -145,7 +140,7 @@ export class GlobalListener {
         * @returns void
     */
     onConnect(connectListener) {
-        this.connectListener = connectListener;
+        this._connectListener = connectListener;
     }
 
     /**
@@ -153,7 +148,7 @@ export class GlobalListener {
         * @returns void
     */
     onDisconnect(disconnectListener) {
-        this.disconnectListener = disconnectListener;
+        this._disconnectListener = disconnectListener;
     }
 
     /**
@@ -162,7 +157,7 @@ export class GlobalListener {
         * @returns void
     */
     onMessage(messageType, messageListener) {
-        this.messageListeners.set(messageType, messageListener);
+        this._messageListeners.set(messageType, messageListener);
     }
 
     /**
@@ -171,7 +166,7 @@ export class GlobalListener {
         * @returns {import('@cyberguide/types/shared').Result<null>}
     */
     sendToPort(portName, message) {
-        const port = this.ports.get(portName);
+        const port = this._ports.get(portName);
         if (port) {
             port.port.postMessage(message);
             return { success: true, result: null };
@@ -190,7 +185,7 @@ export class GlobalListener {
         * @returns {import('@cyberguide/types/shared').Result<null>}
     */
     sendToChannel(channelName, message, except) {
-        const ports = this.channel_ports.get(channelName);
+        const ports = this._channel_ports.get(channelName);
         if (ports) {
             ports.forEach((port) => {
                 if (port.tabId !== except) {
@@ -213,7 +208,7 @@ export class GlobalListener {
         * @returns {import('@cyberguide/types/shared').Result<null>}
     */
     sendToTab(tabId, message, except) {
-        const ports = this.tab_ports.get(tabId);
+        const ports = this._tab_ports.get(tabId);
         if (ports) {
             ports.forEach((port) => {
                 if (port.channelName !== except) {
@@ -235,15 +230,11 @@ export class GlobalListener {
         * @returns {import('@cyberguide/types/shared').Result<null>}
     */
     sendToAll(message, except) {
-        this.ports.forEach((port) => {
+        this._ports.forEach((port) => {
             if (port.name !== except) {
                 port.port.postMessage(message);
             }
         });
         return { success: true, result: null };
-    }
-
-    get allowedChannels() {
-        return this._allowedChannels;
     }
 }
