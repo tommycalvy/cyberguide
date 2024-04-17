@@ -1,31 +1,34 @@
-import browser from 'webextension-polyfill';
+import { jest } from '@jest/globals';
 import { GlobalListener } from './global-listener';
 
-//jest.mock('webextension-polyfill');
-
 describe('GlobalListener', () => {
-
     const mockSidebarPort = {
         name: 'sb-123',
         disconnect: jest.fn(),
         onMessage: {
-            addListener: jest.fn()
+            addListener: jest.fn(),
+            removeListener: jest.fn(),
+            hasListener: jest.fn(),
+            hasListeners: jest.fn(),
         },
         onDisconnect: {
-            addListener: jest.fn()
+            addListener: jest.fn(),
+            removeListener: jest.fn(),
+            hasListener: jest.fn(),
+            hasListeners: jest.fn(),
         },
         postMessage: jest.fn(),
         sender: {
             tab: {
                 id: undefined,
+                index: 0,
+                highlighted: false,
+                active: false,
+                pinned: false,
+                incognito: false,
             }
         }
     };
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        jest.restoreAllMocks();
-    });
 
     it('should initialize correctly', () => {
         const emptyMap = new Map();
@@ -43,12 +46,19 @@ describe('GlobalListener', () => {
     });
 
     it('successfully accepts a sidebar connection', () => {
+        runtimeSpy.onConnect.addListener.mockImplementationOnce(callback => {
+            callback(mockSidebarPort);
+        });
         const gl = new GlobalListener();
         const mockErrorCallback = jest.fn();
         gl.startListening(mockErrorCallback);
 
-        /** @type {Function} */
-        const addListenerCallback = browser.runtime.onConnect.addListener.mock.calls[0][0];
+        //const addListenerCallback = browser.runtime.onConnect.addListener.mock.calls[0][0];
+        
+        /** @type {jest.MockedFunction<(callback: (port: browser.Runtime.Port) => void) => void>} */
+        const addListener = browser.runtime.onConnect.addListener;
+        const addListenerCallback = addListener.mock.calls[0][0];
+
         addListenerCallback(mockSidebarPort);
 
         expect(mockErrorCallback).not.toHaveBeenCalled();

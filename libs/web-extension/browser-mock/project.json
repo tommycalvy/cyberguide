@@ -1,0 +1,9 @@
+{
+  "name": "browser-mock",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web-extension/browser-mock/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project browser-mock --web",
+  "targets": {}
+}

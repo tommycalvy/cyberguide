@@ -1,7 +1,10 @@
 module.exports = {
     runtime: {
         onConnect: {
-            addListener: jest.fn(),
+            /** @type {import('./types').AddListenerMock}*/
+            addListener: jest.fn(callback => {
+                callback();
+            }),
         }
     }
 };

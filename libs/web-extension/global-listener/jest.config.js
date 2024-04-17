@@ -5,5 +5,5 @@ module.exports = {
     testEnvironment: 'node',
     moduleFileExtensions: ['js', 'jsx'],
     coverageDirectory: '../../../coverage/libs/web-extension/global-listener',
-    roots: ['../'],
+//    roots: ['../'],
 };

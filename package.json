@@ -5,6 +5,7 @@
   "author": "Thomas L. Calvy",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@nx/eslint": "18.2.1",
     "@nx/eslint-plugin": "18.2.1",
     "@nx/jest": "18.2.1",
