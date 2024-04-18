@@ -1,8 +1,4 @@
 .DS_Store
-
-.nx/installation
-.nx/cache
-
+.env
 node_modules
-
 dist/
