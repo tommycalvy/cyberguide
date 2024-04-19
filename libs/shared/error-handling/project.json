@@ -1,8 +1,0 @@
-{
-  "name": "error-handling",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/shared/error-handling/src",
-  "projectType": "library",
-  "tags": [],
-  "targets": {},
-}

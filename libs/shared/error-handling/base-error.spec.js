@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { BaseError } from './error-handling';
+import { BaseError } from './base-error';
 
 describe('BaseError', () => {
   it('should correctly instantiate with a message', () => {
