@@ -3,7 +3,7 @@
         "checkJs": true,
         "baseUrl": ".",
         "paths": {
-            "@libs/*": ["libs/*"]
+            "@cyberguide/*": ["libs/*"]
         }
     },
     "include": ["libs/**/*"],

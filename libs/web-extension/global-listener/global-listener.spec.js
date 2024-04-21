@@ -1,7 +1,7 @@
-import { jest } from '@jest/globals';
+import { jest, describe, expect, it } from '@jest/globals';
 import { GlobalListener } from './global-listener';
 
-describe('GlobalListener', () => {
+describe('GlobalListener Class', () => {
     const mockSidebarPort = {
         name: 'sb-123',
         disconnect: jest.fn(),

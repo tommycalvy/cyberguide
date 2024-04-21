@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { BaseError } from './base-error';
 
-describe('BaseError', () => {
+describe('BaseError Class', () => {
   it('should correctly instantiate with a message', () => {
     const errorMessage = 'Test error message';
     const error = new BaseError(errorMessage);
