@@ -1,0 +1,14 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "name": "@cyberguide/web-extension",
+    "exports": {
+        ".": {
+            "types": "./src/types.d.ts",
+            "default": "./src/index.js"
+        }
+    },
+    "dependencies": {
+        "@cyberguide/shared": "workspace:*",
+        "webextension-polyfill": "^0.11.0"
+    }
+}

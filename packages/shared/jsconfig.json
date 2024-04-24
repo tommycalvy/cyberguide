@@ -1,0 +1,5 @@
+{
+    "$schema": "https://json.schemastore.org/jsconfig",
+    "extends": "../../jsconfig.base.json",
+    "include": ["src/**/*"]
+}

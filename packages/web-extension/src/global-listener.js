@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import { BaseError } from '@cyberguide/shared/error-handling'; 
+import { BaseError } from '@cyberguide/shared';
 
 /** Class that listens and provides utilities for communication between
 *   background scripts, content scripts, popup scripts, and the sidebar.
@@ -117,7 +117,7 @@ export class GlobalListener {
 
     /**
         * @param {browser.Runtime.Port} port
-        * @returns {import('@cyberguide/types/shared').Result<string>}
+        * @returns {import('@cyberguide/shared/types').Result<string>}
         * @private
     */
     _getTabId(port) {

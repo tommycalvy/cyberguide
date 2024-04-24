@@ -1,0 +1,10 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "name": "@cyberguide/shared",
+    "exports": {
+        "." : {
+            "types": "./src/types.d.ts",
+            "default": "./src/index.js"
+        }
+    }
+}

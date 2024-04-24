@@ -1,11 +1,5 @@
 {
-    "compilerOptions": {
-        "checkJs": true,
-        "baseUrl": ".",
-        "paths": {
-            "@cyberguide/*": ["libs/*"]
-        }
-    },
-    "include": ["libs/**/*"],
-    "exclude": ["node_modules"]
+    "$schema": "https://json.schemastore.org/jsconfig",
+    "extends": "./jsconfig.base.json",
+    "include": ["**/*", ".*.js"]
 }

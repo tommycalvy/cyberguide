@@ -1,0 +1,20 @@
+{
+    "$schema": "https://json.schemastore.org/jsconfig",
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "NodeNext",
+        "strict": true,
+        "checkJs": true,
+        "baseUrl": ".",
+        "noEmit": true,
+        "esModuleInterop": true,
+        "preserveSymlinks": true,
+        "paths": {
+            "@cyberguide/shared": ["./packages/shared/src/index.js"],
+            "@cyberguide/web-extension": [
+                "./packages/web-extension/src/index.js"
+            ]
+        }
+    }
+}
