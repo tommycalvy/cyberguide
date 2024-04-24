@@ -163,7 +163,7 @@ export class GlobalListener {
     /**
         * @param {string} portName
         * @param {import('./types').Message} message
-        * @returns {import('@cyberguide/types/shared').Result<null>}
+        * @returns {import('@cyberguide/shared/types').Result<null>}
     */
     sendToPort(portName, message) {
         const port = this._ports.get(portName);
@@ -182,7 +182,7 @@ export class GlobalListener {
         * @param {string} channelName
         * @param {import('./types').Message} message
         * @param {string} [except]
-        * @returns {import('@cyberguide/types/shared').Result<null>}
+        * @returns {import('@cyberguide/shared/types').Result<null>}
     */
     sendToChannel(channelName, message, except) {
         const ports = this._channel_ports.get(channelName);
@@ -205,7 +205,7 @@ export class GlobalListener {
         * @param {string} tabId
         * @param {import('./types').Message} message
         * @param {string} [except]
-        * @returns {import('@cyberguide/types/shared').Result<null>}
+        * @returns {import('@cyberguide/shared/types').Result<null>}
     */
     sendToTab(tabId, message, except) {
         const ports = this._tab_ports.get(tabId);
@@ -227,7 +227,7 @@ export class GlobalListener {
     /**
         * @param {import('./types').Message} message
         * @param {string} [except]
-        * @returns {import('@cyberguide/types/shared').Result<null>}
+        * @returns {import('@cyberguide/shared/types').Result<null>}
     */
     sendToAll(message, except) {
         this._ports.forEach((port) => {

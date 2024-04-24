@@ -1,1 +1,1 @@
-export type { Result } from './result';
+export { Result } from './result';
