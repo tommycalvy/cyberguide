@@ -1,4 +1,4 @@
-import { jest, describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import { GlobalListener } from './global-listener';
 
 describe('GlobalListener Class', () => {

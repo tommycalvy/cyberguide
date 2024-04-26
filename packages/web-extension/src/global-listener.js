@@ -11,10 +11,13 @@ export class GlobalListener {
     /** @typedef {string} TabId */
 
     /**
-        * @param allowedChannels - An array of channel names that the 
-        * listener will accept.
+        * @param {browser.runtime} runtime
+        * @param {string[]} [allowedChannels] - Array of allowed channel names 
     */
-    constructor(allowedChannels = ['sb', 'gb']) {
+    constructor(runtime, allowedChannels = ['sb', 'gb']) {
+
+        /** @type {browser.runtime} */
+        this._runtime = runtime;
 
         /** @type {Set<ChannelName>} */
         this._allowedChannels = new Set(allowedChannels);
@@ -44,7 +47,7 @@ export class GlobalListener {
     * @returns void
     */
     startListening(errorCallback) {
-        browser.runtime.onConnect.addListener((port) => {
+        this._runtime.onConnect.addListener((port) => {
 
             const channelName = port.name.split('-')[0];
             if (!this._allowedChannels.has(channelName)) {
