@@ -1,5 +1,9 @@
 import browser from 'webextension-polyfill';
 
+export type Browser = typeof browser;
+
+export type RuntimePort = browser.Runtime.Port;
+
 export type TabId = string;
 
 export type ChannelName = string;
@@ -10,7 +14,7 @@ export type MessageType = string;
 
 export interface Port {
     name: PortName;
-    port: browser.Runtime.Port;
+    runtimePort: RuntimePort;
     channelName: ChannelName;
     tabId: TabId;
 }
@@ -23,3 +27,4 @@ export interface Message {
 export type ConnectListener = (port: Port) => void;
 export type DisconnectListener = (port: Port) => void;
 export type MessageListener = (message: Message, port: Port) => void;
+

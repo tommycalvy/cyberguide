@@ -1,4 +1,3 @@
-import browser from 'webextension-polyfill';
 import { BaseError } from '@cyberguide/shared';
 
 /** Class that listens and provides utilities for communication between
@@ -11,13 +10,9 @@ export class GlobalListener {
     /** @typedef {string} TabId */
 
     /**
-        * @param {browser.runtime} runtime
         * @param {string[]} [allowedChannels] - Array of allowed channel names 
     */
-    constructor(runtime, allowedChannels = ['sb', 'gb']) {
-
-        /** @type {browser.runtime} */
-        this._runtime = runtime;
+    constructor(allowedChannels = ['sb', 'gb']) {
 
         /** @type {Set<ChannelName>} */
         this._allowedChannels = new Set(allowedChannels);
@@ -42,14 +37,15 @@ export class GlobalListener {
     }
 
     /**
+    * @param {import('./types').Browser} browser
     * @param {(err: BaseError) => void} errorCallback 
     * A function that's called if an error occurs while setting up the listener
     * @returns void
     */
-    startListening(errorCallback) {
-        this._runtime.onConnect.addListener((port) => {
+    startListening(browser, errorCallback) {
+        browser.runtime.onConnect.addListener((runtimePort) => {
 
-            const channelName = port.name.split('-')[0];
+            const channelName = runtimePort.name.split('-')[0];
             if (!this._allowedChannels.has(channelName)) {
                 const err = new BaseError('Invalid channel', { 
                     context: { channelName } 
@@ -57,7 +53,7 @@ export class GlobalListener {
                 return errorCallback(err);
             }
 
-            const tabIdResult = this._getTabId(port);
+            const tabIdResult = this._getTabId(runtimePort);
             if (!tabIdResult.success) {
                 const err = new BaseError('GlobalListener.getTabId failed', {
                     cause: tabIdResult.error 
@@ -67,7 +63,7 @@ export class GlobalListener {
             const tabId = tabIdResult.result;
 
             const portName = channelName + '-' + tabId;
-            const newPort = { name: portName, port, channelName, tabId };
+            const newPort = { name: portName, runtimePort, channelName, tabId };
 
             this._ports.set(portName, newPort);
 
@@ -92,7 +88,7 @@ export class GlobalListener {
                 errorCallback(err);
             }
 
-            port.onMessage.addListener((msg) => {
+            runtimePort.onMessage.addListener((msg) => {
                 const messageListener = this._messageListeners.get(msg.type);
                 if (messageListener) {
                     messageListener(msg, newPort);
@@ -104,7 +100,7 @@ export class GlobalListener {
                 }
             });
 
-            port.onDisconnect.addListener(() => {
+            runtimePort.onDisconnect.addListener(() => {
                 this._ports.delete(portName);
                 this._channel_ports.get(channelName)?.delete(newPort);
                 this._tab_ports.get(tabId)?.delete(newPort);
@@ -119,21 +115,21 @@ export class GlobalListener {
     }
 
     /**
-        * @param {browser.Runtime.Port} port
+        * @param {import('./types').RuntimePort} runtimePort
         * @returns {import('@cyberguide/shared/types').Result<string>}
         * @private
     */
-    _getTabId(port) {
-        let tabId = port.sender?.tab?.id?.toString();
+    _getTabId(runtimePort) {
+        let tabId = runtimePort.sender?.tab?.id?.toString();
         if (tabId) {
             return { success: true, result: tabId };
         } 
-        tabId = port.name.split('-')[1];
+        tabId = runtimePort.name.split('-')[1];
         if (tabId) {
             return { success: true, result: tabId };
         }
         const err = new BaseError('No tabId in port.sender or port.name', {
-            context: { portName: port.name }
+            context: { portName: runtimePort.name }
         });
         return { success: false, error: err };
     }
@@ -171,7 +167,7 @@ export class GlobalListener {
     sendToPort(portName, message) {
         const port = this._ports.get(portName);
         if (port) {
-            port.port.postMessage(message);
+            port.runtimePort.postMessage(message);
             return { success: true, result: null };
         } else {
             const err = new BaseError('No port found', {
@@ -192,7 +188,7 @@ export class GlobalListener {
         if (ports) {
             ports.forEach((port) => {
                 if (port.tabId !== except) {
-                    port.port.postMessage(message);
+                    port.runtimePort.postMessage(message);
                 }
             });
             return { success: true, result: null };
@@ -215,7 +211,7 @@ export class GlobalListener {
         if (ports) {
             ports.forEach((port) => {
                 if (port.channelName !== except) {
-                    port.port.postMessage(message);
+                    port.runtimePort.postMessage(message);
                 }
             });
             return { success: true, result: null };
@@ -235,7 +231,7 @@ export class GlobalListener {
     sendToAll(message, except) {
         this._ports.forEach((port) => {
             if (port.name !== except) {
-                port.port.postMessage(message);
+                port.runtimePort.postMessage(message);
             }
         });
         return { success: true, result: null };
