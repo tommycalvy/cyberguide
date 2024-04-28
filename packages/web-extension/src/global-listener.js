@@ -37,14 +37,15 @@ export class GlobalListener {
     }
 
     /**
-    * @param {import('./types').Browser} browser
+    * @param {import('./types').OnConnect} onConnect
     * @param {(err: BaseError) => void} errorCallback 
     * A function that's called if an error occurs while setting up the listener
     * @returns void
     */
-    startListening(browser, errorCallback) {
-        browser.runtime.onConnect.addListener((runtimePort) => {
+    startListening(onConnect, errorCallback) {
+        onConnect.addListener((runtimePort) => {
 
+            /** @type {ChannelName} */
             const channelName = runtimePort.name.split('-')[0];
             if (!this._allowedChannels.has(channelName)) {
                 const err = new BaseError('Invalid channel', { 
@@ -53,20 +54,34 @@ export class GlobalListener {
                 return errorCallback(err);
             }
 
-            const tabIdResult = this._getTabId(runtimePort);
-            if (!tabIdResult.success) {
-                const err = new BaseError('GlobalListener.getTabId failed', {
-                    cause: tabIdResult.error 
+            /** @type {TabId | undefined} */ 
+            let tabId = runtimePort.sender?.tab?.id?.toString();
+            if (!tabId) {
+                tabId = runtimePort.name.split('-')[1];
+            }
+            if (!tabId) {
+                const err = new BaseError(
+                    'No tabId in port.sender or port.name',
+                    { context: { portName: runtimePort.name }
                 });
                 return errorCallback(err);
             }
-            const tabId = tabIdResult.result;
 
+            /** @type {PortName} */
             const portName = channelName + '-' + tabId;
-            const newPort = { name: portName, runtimePort, channelName, tabId };
 
+            /** @type {import('./types').Port} */
+            const newPort = { 
+                name: portName,
+                runtimePort,
+                channelName,
+                tabId 
+            };
+
+            // Add the new port so you can search by portName
             this._ports.set(portName, newPort);
 
+            // Add the new port so you can get list of ports by channelName
             const channel = this._channel_ports.get(channelName); 
             if (!channel) {
                 this._channel_ports.set(channelName, new Set());
@@ -74,6 +89,7 @@ export class GlobalListener {
                 channel.add(newPort);
             }
 
+            // Add the new port so you can get list of ports by tabId
             const tab = this._tab_ports.get(tabId);
             if (!tab) {
                 this._tab_ports.set(tabId, new Set([newPort]));
@@ -81,6 +97,7 @@ export class GlobalListener {
                 tab.add(newPort);
             }
 
+            // Call the connect listener
             if (this._connectListener) {
                 this._connectListener(newPort);
             } else {
@@ -88,6 +105,7 @@ export class GlobalListener {
                 errorCallback(err);
             }
 
+            // Call the message listener for its message type
             runtimePort.onMessage.addListener((msg) => {
                 const messageListener = this._messageListeners.get(msg.type);
                 if (messageListener) {
@@ -101,9 +119,9 @@ export class GlobalListener {
             });
 
             runtimePort.onDisconnect.addListener(() => {
-                this._ports.delete(portName);
-                this._channel_ports.get(channelName)?.delete(newPort);
-                this._tab_ports.get(tabId)?.delete(newPort);
+                this._ports.delete(newPort.name);
+                this._channel_ports.get(newPort.channelName)?.delete(newPort);
+                this._tab_ports.get(newPort.tabId)?.delete(newPort);
                 if (this._disconnectListener) {
                     this._disconnectListener(newPort);
                 } else {
@@ -112,26 +130,6 @@ export class GlobalListener {
                 }
             });
         });
-    }
-
-    /**
-        * @param {import('./types').RuntimePort} runtimePort
-        * @returns {import('@cyberguide/shared/types').Result<string>}
-        * @private
-    */
-    _getTabId(runtimePort) {
-        let tabId = runtimePort.sender?.tab?.id?.toString();
-        if (tabId) {
-            return { success: true, result: tabId };
-        } 
-        tabId = runtimePort.name.split('-')[1];
-        if (tabId) {
-            return { success: true, result: tabId };
-        }
-        const err = new BaseError('No tabId in port.sender or port.name', {
-            context: { portName: runtimePort.name }
-        });
-        return { success: false, error: err };
     }
 
     /**

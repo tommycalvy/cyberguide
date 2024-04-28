@@ -26,6 +26,10 @@ importers:
       webextension-polyfill:
         specifier: ^0.11.0
         version: 0.11.0
+    devDependencies:
+      '@types/webextension-polyfill':
+        specifier: ^0.10.7
+        version: 0.10.7
 
 packages:
 
@@ -442,6 +446,10 @@ packages:
     dependencies:
       undici-types: 5.26.5
     dev: false
+
+  /@types/webextension-polyfill@0.10.7:
+    resolution: {integrity: sha512-10ql7A0qzBmFB+F+qAke/nP1PIonS0TXZAOMVOxEUsm+lGSW6uwVcISFNa0I4Oyj0884TZVWGGMIWeXOVSNFHw==}
+    dev: true
 
   /@vitest/expect@1.5.2:
     resolution: {integrity: sha512-rf7MTD1WCoDlN3FfYJ9Llfp0PbdtOMZ3FIF0AVkDnKbp3oiMW1c8AmvRZBcqbAhDUAvF52e9zx4WQM1r3oraVA==}

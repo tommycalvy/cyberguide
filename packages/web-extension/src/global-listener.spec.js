@@ -50,5 +50,19 @@ describe('GlobalListener Class', () => {
     });
 
     it('successfully accepts a sidebar connection', () => {
+        const gl = new GlobalListener();
+
+        /** @type {import('./types').OnConnect} */
+        const mockOnConnect = {
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            hasListeners: vi.fn(),
+            hasListener: vi.fn(),
+        };
+        const mockErrorCallback = vi.fn();
+
+        gl.startListening(mockOnConnect, mockErrorCallback);
+
+        expect(mockOnConnect.addListener).toHaveBeenCalled();
     });
 });

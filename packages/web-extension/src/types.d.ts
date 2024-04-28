@@ -1,8 +1,8 @@
-import browser from 'webextension-polyfill';
+import type { Runtime, runtime } from '@types/webextension-polyfill';
 
-export type Browser = typeof browser;
+const onConnect = runtime.onConnect;
 
-export type RuntimePort = browser.Runtime.Port;
+export type OnConnect = typeof onConnect;
 
 export type TabId = string;
 
@@ -14,7 +14,7 @@ export type MessageType = string;
 
 export interface Port {
     name: PortName;
-    runtimePort: RuntimePort;
+    runtimePort: Runtime.Port;
     channelName: ChannelName;
     tabId: TabId;
 }
