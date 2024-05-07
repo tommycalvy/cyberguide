@@ -1,8 +1,11 @@
 import type { Runtime, runtime } from '@types/webextension-polyfill';
 
 const onConnect = runtime.onConnect;
-
 export type OnConnect = typeof onConnect;
+
+export type RuntimePort = Runtime.Port;
+
+export type Callback = (port: RuntimePort) => void;
 
 export type TabId = string;
 
@@ -14,7 +17,7 @@ export type MessageType = string;
 
 export interface Port {
     name: PortName;
-    runtimePort: Runtime.Port;
+    runtimePort: RuntimePort;
     channelName: ChannelName;
     tabId: TabId;
 }
