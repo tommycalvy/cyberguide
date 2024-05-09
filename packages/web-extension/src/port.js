@@ -1,99 +1,140 @@
-import browser from 'webextension-polyfill';
-import type { Message, MessageType } from '../types/messaging';
-import type { Setter } from 'solid-js';
-import { BaseError, type Result } from './error';
+import { BaseError } from '@cyberguide/shared';
 
-class Port {
+/** Class that allows content scripts and sidebar scripts to communicate with
+*   background scripts.
+*/
+    
+export class Port {
 
-    channelName: string;
-    portName: string | null;
-    tabId: string | null;
-    backgroundPort: browser.Runtime.Port | null;
-    messageListeners: Map<MessageType, (msg: Message) => void>;
-    setReconnectionAttempts: Setter<number>;
+    /**
+        * @param {Object} options
+        * @param {string} options.channelName
+        * @param {import('./types').NumberSetter} options.setReconnectAttempts
+        * @param {string} [options.tabId]
+        * @param {boolean} [options.logging]
+    */
+    constructor({ 
+        channelName,
+        setReconnectAttempts,
+        tabId,
+        logging = false
+    }) {
 
-    constructor(
-        channelName: string,
-        setReconnectionAttempts: Setter<number>,
-        tabId?: string,
-    ) {
-        // If channel is not 2 characters long, throw an error
-        if (channelName.length !== 2) {
-            throw new Error('Channel must be 2 characters long');
-        }
-        this.channelName = channelName;
-        this.setReconnectionAttempts = setReconnectionAttempts;
-        this.tabId = null;
-        this.portName = null;
-        if (tabId) {
-            this.tabId = tabId;
-            this.portName = this.channelName + '-' + tabId;
-        }
-        this.backgroundPort = null;
-        this.messageListeners = new Map();
-        this.connect(); 
+        /** @type {string} */
+        this._channelName = channelName;
+
+        /** @type {import('./types').NumberSetter} */
+        this._setReconnectAttempts = setReconnectAttempts;
+
+        /** @type {string} */
+        this._tabId = tabId ? tabId : 'cyberguide';
+
+        /** @type {boolean} */
+        this._logging = logging;
+
+        /** @type {string} */
+        this._portName = this._channelName + '-' + this._tabId;
+
+        /** @type {import('./types').RuntimePort | null} */
+        this._backgroundPort = null;
+
+        /** @type {Map<string, import('./types').MessageListener>} */
+        this._messageListeners = new Map();
     }
 
-    connect() {
-        if (this.portName === null) {
-            this.portName = this.channelName + '-cyberguide';
-        }
-        this.backgroundPort = browser.runtime.connect({ name: this.portName });
-        this.backgroundPort.onMessage.addListener((msg) => {
-            console.log(this.portName, 'received message:', msg);
-            const messageListener = this.messageListeners.get(msg.type);
+    /**
+        * @param {import('./types').RuntimeConnect} runtimeConnect
+        * @returns void
+    */
+    connect(runtimeConnect) {
+        this._backgroundPort = runtimeConnect({ name: this._portName });
+        if (this._logging) console.log(this._portName, 'connected');
+
+        this._backgroundPort.onMessage.addListener((msg, runtimePort) => {
+            if (this._logging) {
+                console.log(this._portName, 'received message:', msg);
+            }
+
+            /** @type {import('./types').Port} */
+            const port = {
+                name: this._portName,
+                runtimePort,
+                channelName: this._channelName,
+                tabId: this._tabId,
+            };
+
+            const messageListener = this._messageListeners.get(msg.type);
             if (messageListener) {
-                messageListener(msg);
+                messageListener(msg, port);
             } else {
-                throw new Error('No listener for message type:', msg.type);
+                if (this._logging) {
+                    console.warn('No listener for message type', msg.type);
+                }
             }
         });
-        this.backgroundPort.onDisconnect.addListener(() => {
-            console.log(this.portName, 'disconnected');
-            this.reconnect();
+        this._backgroundPort.onDisconnect.addListener(() => {
+            this.reconnect(runtimeConnect);
         });
     }
 
-    disconnect(): void {
-        if (this.backgroundPort) {
-            this.backgroundPort.disconnect();
-            this.backgroundPort = null; // Ensure the old port is cleared
+    /**
+        * @returns void
+    */
+    disconnect() {
+        if (this._backgroundPort) {
+            this._backgroundPort.disconnect();
+            this._backgroundPort = null; // Ensure the old port is cleared
+            if (this._logging) console.log(this._portName, 'disconnected');
         }
     }
 
-    reconnect(): void {
-        console.log(this.portName, 'reconnecting');
+    /**
+        * @param {import('./types').RuntimeConnect} runtimeConnect
+        * @returns void
+    */
+    reconnect(runtimeConnect) {
         this.disconnect(); // Disconnect the current port
-        this.setReconnectionAttempts((prev: number) => prev + 1);
-        this.connect(); // Reconnect with the new ID
+        this._setReconnectAttempts((prev) => prev + 1);
+        if (this._logging) console.log(this._portName, 'reconnecting');
+        this.connect(runtimeConnect); // Reconnect with the new ID
     }
 
-    setMessageListener(
-        messageType: MessageType,
-        messageListener: (msg: Message) => void,
-    ) {
-        this.messageListeners.set(messageType, messageListener);
+    /**
+        * @param {import('./types').MessageType} messageType
+        * @param {import('./types').MessageListener} messageListener
+        * @returns void
+    */
+    setMessageListener(messageType, messageListener) {
+        this._messageListeners.set(messageType, messageListener);
     }
 
-    removeMessageListener(messageType: MessageType): Result<null> {
-        const removed = this.messageListeners.delete(messageType);
+    /**
+        * @param {import('./types').MessageType} messageType
+        * @returns {import('@cyberguide/shared/types').Result<null>}
+    */
+    removeMessageListener(messageType) {
+        const removed = this._messageListeners.delete(messageType);
         if (removed) {
             return { success: true, result: null };
         }
         const err = new BaseError('No listener for message type', {
             context: { messageType },
         });
+        if (this._logging) console.error(err.message);
         return { success: false, error: err };
     }
 
-    send(msg: Message): Result<null> {
-        if (this.backgroundPort) {
-            this.backgroundPort.postMessage(msg);
+    /**
+        * @param {import('./types').Message} msg
+        * @returns {import('@cyberguide/shared/types').Result<null>}
+    */
+    send(msg) {
+        if (this._backgroundPort) {
+            this._backgroundPort.postMessage(msg);
             return { success: true, result: null };
         }
         const err = new Error('Port is not connected');
+        if (this._logging) console.error(err.message);
         return { success: false, error: err };
     }
 }
-
-export default Port;
