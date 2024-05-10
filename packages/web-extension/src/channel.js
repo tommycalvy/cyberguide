@@ -4,7 +4,7 @@ import { BaseError } from '@cyberguide/shared';
 *   background scripts.
 */
     
-export class Port {
+export class Channel {
 
     /**
         * @param {Object} options
