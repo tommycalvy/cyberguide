@@ -1,6 +1,12 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "name": "@cyberguide/web-extension",
+    "version": "0.0.1",
+    "description": "Cyberguide web-extension libraries",
+    "type": "module",
+    "keywords": [],
+    "author": "Thomas L. Calvy",
+    "license": "Apache-2.0",
     "exports": {
         ".": {
             "types": "./src/types.d.ts",
@@ -9,9 +15,11 @@
     },
     "dependencies": {
         "@cyberguide/shared": "workspace:*",
+        "rrweb": "2.0.0-alpha.13",
         "solid-js": "^1.8.17"
     },
     "devDependencies": {
+        "@rrweb/types": "2.0.0-alpha.13",
         "@types/webextension-polyfill": "^0.10.7"
     }
 }
