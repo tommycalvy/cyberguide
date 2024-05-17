@@ -1,4 +1,5 @@
 import { record } from 'rrweb';
+import { MessageName, isInCrossOriginIFrame } from './utils';
 
 /**
 * This script is injected into both main page and cross-origin IFrames 
@@ -13,14 +14,7 @@ import { record } from 'rrweb';
 * @property {typeof MessageName.RecordStarted} message
 * @property {number} startTimestamp
 */
-const MessageName = {
-    RecordScriptReady: 'cyberguide-extension-record-script-ready',
-    StartRecord: 'cyberguide-extension-start-record',
-    RecordStarted: 'cyberguide-extension-record-started',
-    StopRecord: 'cyberguide-extension-stop-record',
-    RecordStopped: 'cyberguide-extension-record-stopped',
-    EmitEvent: 'cyberguide-extension-emit-event',
-};
+
 
 /** @type {eventWithTime[]} */
 const events = [];
@@ -76,16 +70,6 @@ const messageHandler = (event) => {
     if (eventHandler[data.message]) eventHandler[data.message]();
 };
 
-function isInCrossOriginIFrame() {
-    if (window.parent !== window) {
-        try {
-            void window.parent.location.origin;
-        } catch (error) {
-            return true;
-        }
-    }
-    return false;
-}
 
 /**
     * Only post message in the main page.
