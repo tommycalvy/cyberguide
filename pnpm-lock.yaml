@@ -12,6 +12,12 @@ importers:
         specifier: ^1.5.2
         version: 1.5.2
 
+  apps/web-extension:
+    dependencies:
+      '@cyberguide/web-extension':
+        specifier: workspace:^
+        version: link:../../packages/web-extension
+
   packages/shared:
     devDependencies:
       vitest:

@@ -1,8 +1,9 @@
 import { record } from 'rrweb';
 
 /**
- * This script is injected into both main page and cross-origin IFrames through <script> tags.
- */
+* This script is injected into both main page and cross-origin IFrames 
+* through <script> tags.
+*/
 
 /** @typedef {import('@rrweb/types').eventWithTime} eventWithTime */
 /** @typedef {import('rrweb').recordOptions<eventWithTime>} recordOptions */
@@ -12,7 +13,6 @@ import { record } from 'rrweb';
 * @property {typeof MessageName.RecordStarted} message
 * @property {number} startTimestamp
 */
-
 const MessageName = {
     RecordScriptReady: 'cyberguide-extension-record-script-ready',
     StartRecord: 'cyberguide-extension-start-record',
@@ -44,36 +44,48 @@ function startRecord(config) {
     });
 }
 
-const messageHandler = (
-  event: MessageEvent<{
-    message: MessageName;
-    config?: recordOptions<eventWithTime>;
-  }>,
-) => {
-  if (event.source !== window) return;
-  const data = event.data;
-  const eventHandler = {
-    [MessageName.StartRecord]: () => {
-      startRecord(data.config || {});
-    },
-    [MessageName.StopRecord]: () => {
-      if (stopFn) {
-        try {
-          stopFn();
-        } catch (e) {
-          //
-        }
-      }
-      postMessage({
-        message: MessageName.RecordStopped,
-        events,
-        endTimestamp: Date.now(),
-      });
-      window.removeEventListener('message', messageHandler);
-    },
-  } as Record<MessageName, () => void>;
-  if (eventHandler[data.message]) eventHandler[data.message]();
+/**
+* @param {MessageEvent<{ message: string, config?: recordOptions }>} event
+* @returns void
+*/
+const messageHandler = (event) => {
+    if (event.source !== window) return;
+    const data = event.data;
+
+    /** @type {Record<string, () => void>} */
+    const eventHandler = {
+        [MessageName.StartRecord]: () => {
+            startRecord(data.config || {});
+        },
+        [MessageName.StopRecord]: () => {
+            if (stopFn) {
+                try {
+                    stopFn();
+                } catch (e) {
+                    //
+                }
+            }
+            postMessage({
+                message: MessageName.RecordStopped,
+                events,
+                endTimestamp: Date.now(),
+            });
+            window.removeEventListener('message', messageHandler);
+        },
+    };
+    if (eventHandler[data.message]) eventHandler[data.message]();
 };
+
+function isInCrossOriginIFrame() {
+    if (window.parent !== window) {
+        try {
+            void window.parent.location.origin;
+        } catch (error) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
     * Only post message in the main page.
@@ -83,11 +95,12 @@ function postMessage(message) {
   if (!isInCrossOriginIFrame()) window.postMessage(message, location.origin);
 }
 
-window.addEventListener('message', messageHandler);
+export function initRecordScript() {
+    window.addEventListener('message', messageHandler);
 
-window.postMessage(
-  {
-    message: MessageName.RecordScriptReady,
-  },
-  location.origin,
-);
+    window.postMessage(
+        { message: MessageName.RecordScriptReady },
+        location.origin,
+    );
+}
+

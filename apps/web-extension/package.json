@@ -1,0 +1,13 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "name": "cyberguide-web-extension",
+    "version": "0.0.1",
+    "description": "Cyberguide web-extension libraries",
+    "type": "module",
+    "keywords": [],
+    "author": "Thomas L. Calvy",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@cyberguide/web-extension": "workspace:^"
+    }
+}
