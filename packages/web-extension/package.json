@@ -8,10 +8,7 @@
     "author": "Thomas L. Calvy",
     "license": "Apache-2.0",
     "exports": {
-        ".": {
-            "types": "./src/types.d.ts",
-            "default": "./src/index.js"
-        }
+        ".": "./src/index.ts"
     },
     "dependencies": {
         "@cyberguide/shared": "workspace:*",
@@ -20,6 +17,7 @@
     },
     "devDependencies": {
         "@rrweb/types": "2.0.0-alpha.13",
-        "@types/webextension-polyfill": "^0.10.7"
+        "@types/webextension-polyfill": "^0.10.7",
+        "wxt": "^0.18.2"
     }
 }

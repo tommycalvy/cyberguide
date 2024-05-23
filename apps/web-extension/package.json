@@ -1,22 +1,26 @@
 {
-    "name": "cyberguide-web-extension",
-    "version": "0.0.1",
-    "description": "Cyberguide",
-    "type": "module",
-    "keywords": [],
-    "author": "Thomas L. Calvy",
-    "license": "Apache-2.0",
-    "scripts": {
-        "dev": "vite build --watch",
-        "build": "vite build"
-    },
-    "devDependencies": {
-        "glob": "^10.3.15",
-        "vite": "^5.2.0",
-        "vite-plugin-static-copy": "^1.0.5"
-    },
-    "dependencies": {
-        "@cyberguide/web-extension": "workspace:^",
-        "webextension-polyfill": "^0.12.0"
-    }
+  "name": "cyberguide-web-extension",
+  "description": "Create shareable tutorials for web applications",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "@cyberguide/web-extension": "workspace:*",
+    "solid-js": "^1.8.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite-plugin-solid": "^2.8.0",
+    "wxt": "^0.18.2"
+  }
 }

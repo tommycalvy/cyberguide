@@ -1,25 +1,20 @@
 import { MessageName } from './utils';
+import { WxtRuntime } from 'wxt/browser';
 
-/** @param {string} recordScriptUrl */
-function startRecording(recordScriptUrl) {
+function startRecording(runtime: WxtRuntime, recordScriptUrl: string) {
     const scriptEl = document.createElement('script');
-    scriptEl.src = chrome.runtime.getURL(recordScriptUrl);
+    scriptEl.src = runtime.getURL(recordScriptUrl);
     document.documentElement.appendChild(scriptEl);
     scriptEl.onload = () => {
         document.documentElement.removeChild(scriptEl);
     };
 }
 
-/**
-* @param {MessageEvent<{ message: string }>} event
-* @returns void
-*/
-const messageHandler = (event) => {
+const messageHandler = (event: MessageEvent<{ message: string }>) => {
     if (event.source !== window) return;
     const data = event.data;
 
-    /** @type {Record<string, (event: MessageEvent) => void>} */
-    const eventHandler = {
+    const eventHandler: Record<string, (event: MessageEvent) => void> = {
         [MessageName.RecordScriptReady]: () => {
             console.log('Record script ready');
             window.postMessage(
@@ -39,10 +34,9 @@ const messageHandler = (event) => {
     if (eventHandler[data.message]) eventHandler[data.message](event);
 };
 
-/** @param {string} recordScriptUrl */
-export function initRecordingManager(recordScriptUrl) {
+export function initRecordingManager(runtime: WxtRuntime, recordScriptUrl: string) {
     window.addEventListener('message', messageHandler);
-    startRecording(recordScriptUrl); 
+    startRecording(runtime, recordScriptUrl); 
     /*
     if (isInCrossOriginIFrame()) {
         void initCrossOriginIframe();

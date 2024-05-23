@@ -1,6 +1,7 @@
 import { globSync } from 'glob';
 import path from 'node:path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { fileURLToPath } from 'node:url';
 
 /** @type {import('vite').UserConfig} */
 export default {
@@ -11,8 +12,8 @@ export default {
                     path.relative(
                         'src',
                         file.slice(0, file.length - path.extname(file).length)
-                    ), 
-                    file
+                    ),
+                    fileURLToPath(new URL(file, import.meta.url))
                 ])
             ),
             output: {
@@ -22,9 +23,6 @@ export default {
             }
         },
         minify: false,
-    },
-    optimizeDeps: {
-        include: ['**/*.js'],
     },
     plugins: [
         viteStaticCopy({

@@ -1,14 +1,14 @@
 {
-    "$schema": "https://json.schemastore.org/jsconfig",
+    "$schema": "https://json.schemastore.org/tsconfig",
     "compilerOptions": {
         "target": "ESNext",
         "module": "ESNext",
         "moduleResolution": "Bundler",
-        "strict": true,
-        "checkJs": true,
-        "baseUrl": ".",
         "noEmit": true,
         "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "baseUrl": "./",
         "preserveSymlinks": true,
         "paths": {
             "@cyberguide/*": [
