@@ -4,6 +4,7 @@ import { WxtRuntime } from 'wxt/browser';
 function startRecording(runtime: WxtRuntime, recordScriptUrl: string) {
     const scriptEl = document.createElement('script');
     scriptEl.src = runtime.getURL(recordScriptUrl);
+    console.log('scriptEl.src', scriptEl.src);
     document.documentElement.appendChild(scriptEl);
     scriptEl.onload = () => {
         document.documentElement.removeChild(scriptEl);

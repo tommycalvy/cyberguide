@@ -28,8 +28,8 @@ importers:
         specifier: ^2.8.0
         version: 2.10.2(solid-js@1.8.17)(vite@5.2.10)
       wxt:
-        specifier: ^0.18.2
-        version: 0.18.2
+        specifier: ^0.17.0
+        version: 0.17.12
 
   apps/web-extension-vite:
     dependencies:
@@ -4490,6 +4490,63 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+    dev: true
+
+  /wxt@0.17.12:
+    resolution: {integrity: sha512-VedEvueLVP8Pi9DH0ikSqhQyGJ6uRWVycSicdLNxeGUmPTbExj7hhH5ZZM+SIgsIh9yQgVm7MPnVnobzmeJHJw==}
+    engines: {node: '>=18', pnpm: '>=8'}
+    hasBin: true
+    dependencies:
+      '@aklinker1/rollup-plugin-visualizer': 5.12.0
+      '@types/webextension-polyfill': 0.10.7
+      '@webext-core/fake-browser': 1.3.1
+      '@webext-core/isolated-element': 1.1.2
+      '@webext-core/match-patterns': 1.0.3
+      async-mutex: 0.4.1
+      c12: 1.10.0
+      cac: 6.7.14
+      chokidar: 3.6.0
+      ci-info: 4.0.0
+      consola: 3.2.3
+      defu: 6.1.4
+      dequal: 2.0.3
+      esbuild: 0.19.12
+      fast-glob: 3.3.2
+      filesize: 10.1.2
+      fs-extra: 11.2.0
+      get-port: 7.1.0
+      giget: 1.2.3
+      hookable: 5.5.3
+      is-wsl: 3.1.0
+      jiti: 1.21.0
+      json5: 2.2.3
+      jszip: 3.10.1
+      linkedom: 0.16.11
+      minimatch: 9.0.4
+      natural-compare: 1.4.0
+      normalize-path: 3.0.0
+      nypm: 0.3.8
+      open: 10.1.0
+      ora: 7.0.1
+      picocolors: 1.0.1
+      prompts: 2.4.2
+      publish-browser-extension: 2.1.3
+      unimport: 3.7.1
+      vite: 5.2.10
+      web-ext-run: 0.2.0
+      webextension-polyfill: 0.10.0
+    transitivePeerDependencies:
+      - '@types/node'
+      - bufferutil
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - utf-8-validate
     dev: true
 
   /wxt@0.18.2:

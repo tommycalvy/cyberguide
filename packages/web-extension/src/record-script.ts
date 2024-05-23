@@ -1,4 +1,4 @@
-import { record } from 'rrweb';
+import { record, type eventWithTime, type recordOptions } from 'rrweb';
 import { MessageName, isInCrossOriginIFrame } from './utils';
 
 /**
@@ -6,24 +6,16 @@ import { MessageName, isInCrossOriginIFrame } from './utils';
 * through <script> tags.
 */
 
-/** @typedef {import('@rrweb/types').eventWithTime} eventWithTime */
-/** @typedef {import('rrweb').recordOptions<eventWithTime>} recordOptions */
+type RecordStartedMessage = {
+  message: MessageName.RecordStarted;
+  startTimestamp: number;
+};
 
-/**
-* @typedef {Object} RecordStartedMessage
-* @property {typeof MessageName.RecordStarted} message
-* @property {number} startTimestamp
-*/
+const events: eventWithTime[] = [];
 
+let stopFn: (() => void) | null = null;
 
-/** @type {eventWithTime[]} */
-const events = [];
-
-/** @type {(() => void) | null} */
-let stopFn = null;
-
-/** @param {recordOptions} config */
-function startRecord(config) {
+function startRecord(config: recordOptions<eventWithTime>) {
     events.length = 0;
     stopFn = record({
         emit: (event) => {
@@ -32,22 +24,19 @@ function startRecord(config) {
         },
         ...config,
     }) || null;
-    postMessage(/* @type {RecordStartedMessage} */ {
+    postMessage({
         message: MessageName.RecordStarted,
         startTimestamp: Date.now(),
-    });
+    } as RecordStartedMessage);
 }
 
-/**
-* @param {MessageEvent<{ message: string, config?: recordOptions }>} event
-* @returns void
-*/
-const messageHandler = (event) => {
+const messageHandler = (
+    event: MessageEvent<{ message: string, config?: recordOptions<eventWithTime> }>
+) => {
     if (event.source !== window) return;
     const data = event.data;
 
-    /** @type {Record<string, () => void>} */
-    const eventHandler = {
+    const eventHandler: Record<string, () => void> = {
         [MessageName.StartRecord]: () => {
             startRecord(data.config || {});
         },
@@ -71,11 +60,8 @@ const messageHandler = (event) => {
 };
 
 
-/**
-    * Only post message in the main page.
-    * @param {unknown} message
- */
-function postMessage(message) {
+/** Only post message in the main page. */
+function postMessage(message: unknown) {
   if (!isInCrossOriginIFrame()) window.postMessage(message, location.origin);
 }
 

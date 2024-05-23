@@ -8,7 +8,7 @@ export default defineBackground(() => {
         }
         browser.scripting.executeScript({
             target: { tabId: id },
-            files: ['content.js'],
+            files: ['recording.js'],
         });
     });
 });
