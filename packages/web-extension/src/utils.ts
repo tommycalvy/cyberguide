@@ -1,11 +1,12 @@
 // all message names for postMessage API
 export enum MessageName {
-    RecordScriptReady = 'rrweb-extension-record-script-ready',
-    StartRecord = 'rrweb-extension-start-record',
-    RecordStarted = 'rrweb-extension-record-started',
-    StopRecord = 'rrweb-extension-stop-record',
-    RecordStopped = 'rrweb-extension-record-stopped',
-    EmitEvent = 'rrweb-extension-emit-event',
+    RecordScriptReady = 'cyberguide-extension-record-script-ready',
+    StartRecord = 'cyberguide-extension-start-record',
+    RecordStarted = 'cyberguide-extension-record-started',
+    StopRecord = 'cyberguide-extension-stop-record',
+    RecordStopped = 'cyberguide-extension-record-stopped',
+    EmitEvent = 'cyberguide-extension-emit-event',
+    PauseRecord = 'cyberguide-extension-pause-record',
 }
 
 export function isInCrossOriginIFrame() {
