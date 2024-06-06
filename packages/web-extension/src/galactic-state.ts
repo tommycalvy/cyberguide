@@ -1,4 +1,3 @@
-const messaging = new MessageProtocol('cyberguide');
 
 interface RecordingProtocol {
     start: () => void;
@@ -12,13 +11,6 @@ const recordingProtocol = {
     pause: null,
 };
 
-export const recordingChannel = 
-    messaging.create<{ receiver: RecordingProtocol }>('recording');
-
-export const sidebarChannel =
-    messaging.create<{ sender: RecordingProtocol }>('sidebar');
-
-export const registerProtocols = messaging.register();
 
 
 /*

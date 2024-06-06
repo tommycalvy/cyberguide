@@ -67,6 +67,12 @@ importers:
       '@cyberguide/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solid-primitives/deep':
+        specifier: ^0.2.8
+        version: 0.2.8(solid-js@1.8.17)
+      '@solid-primitives/flux-store':
+        specifier: ^0.0.4
+        version: 0.0.4(solid-js@1.8.17)
       rrweb:
         specifier: 2.0.0-alpha.13
         version: 2.0.0-alpha.13
@@ -1041,6 +1047,49 @@ packages:
     resolution: {integrity: sha512-TV7t8GKYaJWsn00tFDqBw8+Uqmr8A0fRU1tvTQhyZzGv0sJCGRQL3JGMI3ucuKo3XIZdUP+Lx7/gh2t3lewy7g==}
     engines: {node: '>=14.16'}
     dev: true
+
+  /@solid-primitives/deep@0.2.8(solid-js@1.8.17):
+    resolution: {integrity: sha512-r+enqrL2oiDkJt7lYUYMVvKzcqVDAd4G/1OkLnXEibk5nIA635qNIuOxIAaCCP3GDAHKznaW3yc/vMG68lo8bQ==}
+    peerDependencies:
+      solid-js: ^1.6.12
+    dependencies:
+      '@solid-primitives/memo': 1.3.8(solid-js@1.8.17)
+      solid-js: 1.8.17
+    dev: false
+
+  /@solid-primitives/flux-store@0.0.4(solid-js@1.8.17):
+    resolution: {integrity: sha512-QY1znhtcGi8Rtfmn0PIDi18B59SmWL4xjWeQ3BPhcXTN2xaYF6ucH1VN7ezMPTGQYsOZ07DEobth3boAuqKTHQ==}
+    peerDependencies:
+      solid-js: ^1.6.12
+    dependencies:
+      solid-js: 1.8.17
+    dev: false
+
+  /@solid-primitives/memo@1.3.8(solid-js@1.8.17):
+    resolution: {integrity: sha512-U75pfLFSxFmM2xbx1+2XPPyWbaXrnUFF10spbFuOUgJ7azrC+4y+FnrVi4RKqHw9gftd8aKQuTiyMQq468YLQw==}
+    peerDependencies:
+      solid-js: ^1.6.12
+    dependencies:
+      '@solid-primitives/scheduled': 1.4.3(solid-js@1.8.17)
+      '@solid-primitives/utils': 6.2.3(solid-js@1.8.17)
+      solid-js: 1.8.17
+    dev: false
+
+  /@solid-primitives/scheduled@1.4.3(solid-js@1.8.17):
+    resolution: {integrity: sha512-HfWN5w7b7FEc6VPLBKnnE302h90jsLMuR28Fcf7neRGGf8jBj6wm6/UFQ00VlKexHFMR6KQ2u4VBh5a1ZcqM8g==}
+    peerDependencies:
+      solid-js: ^1.6.12
+    dependencies:
+      solid-js: 1.8.17
+    dev: false
+
+  /@solid-primitives/utils@6.2.3(solid-js@1.8.17):
+    resolution: {integrity: sha512-CqAwKb2T5Vi72+rhebSsqNZ9o67buYRdEJrIFzRXz3U59QqezuuxPsyzTSVCacwS5Pf109VRsgCJQoxKRoECZQ==}
+    peerDependencies:
+      solid-js: ^1.6.12
+    dependencies:
+      solid-js: 1.8.17
+    dev: false
 
   /@szmarczak/http-timer@5.0.1:
     resolution: {integrity: sha512-+PmQX0PiAYPMeVYe237LJAYvOMYW1j2rH5YROyS3b4CTVJum34HfRvKvAzozHAQG0TnHNdUfY9nCeUyRAs//cw==}

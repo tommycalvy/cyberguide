@@ -12,6 +12,8 @@
     },
     "dependencies": {
         "@cyberguide/shared": "workspace:*",
+        "@solid-primitives/deep": "^0.2.8",
+        "@solid-primitives/flux-store": "^0.0.4",
         "rrweb": "2.0.0-alpha.13",
         "solid-js": "^1.8.17"
     },
