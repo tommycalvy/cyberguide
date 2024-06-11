@@ -1,4 +1,3 @@
-import { browser } from 'wxt/browser';
 import { BaseError } from './error';
 import type { Runtime } from 'webextension-polyfill';
 import type { SetStoreFunction } from "solid-js/store";
@@ -29,7 +28,6 @@ interface GalaticStoreOptions<
     GuideCreatorGetters extends AnyFunctionsRecord,
 > {
     namespace: string;
-    runtime: Runtime.Static;
     store: {
         global: FluxStore<GlobalState, GlobalActions, GlobalGetters>;
         tab: FluxStore<TabState, TabActions, TabGetters>;
@@ -42,6 +40,13 @@ interface GalaticStoreOptions<
 interface ChannelOptions {
     tabId?: number;
     runtime: Runtime.Static;
+}
+
+interface Port {
+    name: string;
+    channelName: string;
+    tabId: string;
+    runtimePort: Runtime.Port;
 }
 
 export class GalacticStore<
@@ -103,7 +108,7 @@ export class GalacticStore<
                         return originalAction(...args);
                     };
                 }
-                return galacticGlobalActions;
+                return galacticGlobalActions as GlobalActions;
             };
 
             const createTabActions = (setState: SetStoreFunction<TabState>, state: TabState) => {
@@ -121,7 +126,7 @@ export class GalacticStore<
                         return originalAction(...args);
                     };
                 }
-                return galacticTabActions;
+                return galacticTabActions as TabActions;
             };
                 
             const createSidebarActions = (setState: SetStoreFunction<SidebarState>, state: SidebarState) => {
@@ -139,7 +144,7 @@ export class GalacticStore<
                         return originalAction(...args);
                     };
                 }
-                return galacticSidebarActions;
+                return galacticSidebarActions as SidebarActions;
             };
 
             const globalStore = createFluxStore(this._globalStore.state, { 
@@ -152,6 +157,7 @@ export class GalacticStore<
                 actions: createSidebarActions, getters: this._sidebarStore.getters });
 
             port.onMessage.addListener((message) => {
+                if (this._logging) console.log('Galactic message:', message);
                 if (message.type === 'action') {
                     const [path, actionName] = message.path;
                     if (path === 'global') {
@@ -242,6 +248,7 @@ export class GalacticStore<
                 actions: createGuideCreatorActions, getters: this._guideCreatorStore.getters });
 
             port.onMessage.addListener((message) => {
+                if (this._logging) console.log('Galactic Message:', message);
                 if (message.type === 'action') {
                     const [path, actionName] = message.path;
                     if (path === 'global') {
@@ -261,11 +268,16 @@ export class GalacticStore<
 
     createBackgroundStore() {
         return (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
-            runtime.onConnect.addListener((port) => { 
+            const ports = new Set<Port>(); 
+            const tab_ports = new Map<string, Set<Port>>();
+            const sidebar_ports = new Set<Port>();
+            const guideCreator_ports = new Set<Port>();
 
-                if (this._logging) { console.log('New connection attempt...');
+            runtime.onConnect.addListener((runtimePort) => { 
 
-                let [namespace, channelName] = port.name.split('-');
+                if (this._logging) console.log('New connection attempt...');
+
+                let [namespace, channelName] = runtimePort.name.split('-');
                 if (namespace !== this._namespace) {
                     const err = new BaseError('Invalid namespace', { 
                         context: { namespace } 
@@ -274,7 +286,7 @@ export class GalacticStore<
                     return errorCallback(err);
                 }
 
-                let tabId = port.sender?.tab?.id?.toString();
+                let tabId = runtimePort.sender?.tab?.id?.toString();
                 if (!tabId) {
                     [channelName, tabId] = channelName.split('#');
                     if (tabId && isNaN(parseFloat(tabId))) {
@@ -285,7 +297,7 @@ export class GalacticStore<
                 }
                 if (!tabId) {
                     const err = new BaseError('No tabId in port.sender or port.name', {
-                        context: { portName: port.name }
+                        context: { portName: runtimePort.name }
                     });
                     if (this._logging) console.error(err);
                     return errorCallback(err);
@@ -297,24 +309,83 @@ export class GalacticStore<
                     return errorCallback(err);
                 }
 
-                const newPort = { name: port.name, channelName: channelName, tabId, port };
+                const newPort: Port = { name: runtimePort.name, channelName: channelName, tabId, runtimePort };
 
-                port.onMessage.addListener((message) => {
+                ports.add(newPort);
+
+                if (channelName === 'sidebar') {
+                    sidebar_ports.add(newPort);
+                } else if (channelName === 'guidecreator') {
+                    guideCreator_ports.add(newPort);
+                }
+
+                const tab = tab_ports.get(tabId);
+                if (!tab) {
+                    tab_ports.set(tabId, new Set([newPort]));
+                } else {
+                    tab.add(newPort);
+                }
+
+                if (this._logging) console.log(`${newPort.name} connected:`, newPort);
+
+                runtimePort.onMessage.addListener((message) => {
+                    if (this._logging) console.log(`${newPort.name} message:`, message);
                     if (message.type === 'action') {
                         const [path, actionName] = message.path;
                         if (path === 'global') {
-                            
+                            ports.forEach((port) => {
+                                if (port !== newPort) {
+                                    port.runtimePort.postMessage({ 
+                                        type: 'action',     
+                                        path: ['global', actionName],
+                                        args: message.args,
+                                    });
+                                }
+                            });
                         } else if (path === 'tab') {
-                            this._tabStore.actions[actionName](...message.args);
+                            const tabPorts = tab_ports.get(newPort.tabId);
+                            if (!tabPorts) {
+                                const err = new BaseError('No tab ports found', { context: { tabId: newPort.tabId } });
+                                if (this._logging) console.error(err);
+                                return errorCallback(err);
+                            }
+                            tabPorts.forEach((port) => {
+                                if (port !== newPort) {
+                                    port.runtimePort.postMessage({ 
+                                        type: 'action',
+                                        path: ['tab', actionName],
+                                        args: message.args,
+                                    });
+                                }
+                            });
                         } else if (path === 'sidebar') {
-                            this._sidebarStore.actions[actionName](...message.args);
+                            sidebar_ports.forEach((port) => {
+                                if (port !== newPort) {
+                                    port.runtimePort.postMessage({ 
+                                        type: 'action',
+                                        path: ['sidebar', actionName],
+                                        args: message.args,
+                                    });
+                                }
+                            });
                         } else if (path === 'guidecreator') {
-                            this._guideCreatorStore.actions[actionName](...message.args);
+                            guideCreator_ports.forEach((port) => {
+                                if (port !== newPort) {
+                                    port.runtimePort.postMessage({ 
+                                        type: 'action',
+                                        path: ['guidecreator', actionName],
+                                        args: message.args,
+                                    });
+                                }
+                            });
                         }
+                    } else {
+                        const err = new BaseError('Invalid message type', { context: { message } });
+                        if (this._logging) console.error(err);
+                        return errorCallback(err);
                     }
                 });
             });
         }
     }
 }
-

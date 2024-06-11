@@ -1,7 +1,9 @@
-import { initRecordingManager } from '@cyberguide/web-extension';
+import { GalacticGuideCreatorStore } from '@cyberguide/web-extension';
 export default defineUnlistedScript({
     main() {
-        console.log('Hello content.');
-        initRecordingManager(browser.runtime, 'inject.js');
+        console.log('Hello guide creator!', { id: browser.runtime.id });
+        const store = GalacticGuideCreatorStore(browser);
+        console.log('isRecording:', store.tab.getters.isRecording());
+        store.tab.actions.startRecording();
     },
 });

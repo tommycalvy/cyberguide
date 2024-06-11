@@ -1,32 +1,57 @@
+import { GalacticStore } from "./galactic-store";
 
-interface RecordingProtocol {
-    start: () => void;
-    stop: () => void;
-    pause: () => void;
-};
+const galacticStore = new GalacticStore({
+    namespace: 'cyberguide',
+    logging: true,
+    store: {
+        global: {
+            state: {
+                test: false,
+            },
+            getters: (state) => ({
+                isTest: () => state.test,
+            }),
+            actions: (setState, state) => ({
+                setTest: (test) => setState('test', test),
+            }),
+        },
+        tab: {
+            state: {
+                recording: false,
+            },
+            getters: (state) => ({
+                isRecording: () => state.recording,
+            }),
+            actions: (setState, state) => ({
+                startRecording: () => setState('recording', true),
+                stopRecording: () => setState('recording', false),
+            }),
+        },
+        sidebar: {
+            state: {
+                test: false,
+            },
+            getters: (state) => ({
+                isTest: () => state.test,
+            }),
+            actions: (setState, state) => ({
+                setTest: (test) => setState('test', test),
+            }),
+        },
+        guideCreator: {
+            state: {
+                test: false,
+            },
+            getters: (state) => ({
+                isTest: () => state.test,
+            }),
+            actions: (setState, state) => ({
+                setTest: (test) => setState('test', test),
+            }),
+        },
+    },
+});
 
-const recordingProtocol = {
-    start: null,
-    stop: null,
-    pause: null,
-};
-
-
-
-/*
-    * I want the RecordingChannel to be consumed by the sidebar script like this:
-    * const { recording } = sidebarChannel(tabId);
-*   recording.start();
-*   recording.stop();
-*   recording.pause();
-*   The recording channel is in another content script and it should listen to the messages
-*   from the sidebar script.
-    *   The messages should travel through the background script.
-    *   The background script should register the message handlers like this:
-    *   registerProtocols();
-*   The content script should listen to the messages like this:
-    *   const { sidebar } = recordingChannel();
-*   sidebar.onRecordingStart(() => {...});
-*   sidebar.onRecordingStop(() => {...});
-*   sidebar.onRecordingPause(() => {...});
-*/
+export const GalacticSidebarStore = galacticStore.createSidebarStore();
+export const GalacticGuideCreatorStore = galacticStore.createGuideCreatorStore();
+export const GalacticBackgroundStore = galacticStore.createBackgroundStore();

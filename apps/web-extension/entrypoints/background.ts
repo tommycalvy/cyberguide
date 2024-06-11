@@ -1,3 +1,4 @@
+import { GalacticBackgroundStore } from "@cyberguide/web-extension";
 export default defineBackground(() => {
     console.log('Hello background!', { id: browser.runtime.id });
     browser.action.onClicked.addListener(({ id }) => {
@@ -10,5 +11,9 @@ export default defineBackground(() => {
             target: { tabId: id },
             files: ['recording.js'],
         });
+    });
+
+    GalacticBackgroundStore(browser.runtime, () => {
+        console.error('Galactic store error');
     });
 });
