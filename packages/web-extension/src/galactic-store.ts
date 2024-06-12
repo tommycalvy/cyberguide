@@ -99,12 +99,14 @@ export class GalacticStore<
                 for (const actionName in globalActions) {
                     const originalAction = globalActions[actionName];
 
-                    galacticGlobalActions[actionName] = (...args) => {
-                        port.postMessage({ 
-                            type: 'action',
-                            path: ['global', actionName],
-                            args,
-                        });
+                    galacticGlobalActions[actionName] = (galactic: boolean = true, ...args) => {
+                        if (galactic) {
+                            port.postMessage({ 
+                                type: 'action',
+                                path: ['global', actionName],
+                                args,
+                            });
+                        }
                         return originalAction(...args);
                     };
                 }
@@ -117,12 +119,14 @@ export class GalacticStore<
                 for (const actionName in tabActions) {
                     const originalAction = tabActions[actionName];
 
-                    galacticTabActions[actionName] = (...args) => {
-                        port.postMessage({ 
-                            type: 'action',
-                            path: ['tab', actionName],
-                            args,
-                        });
+                    galacticTabActions[actionName] = (galactic: boolean = true, ...args) => {
+                        if (galactic) {
+                            port.postMessage({ 
+                                type: 'action',
+                                path: ['tab', actionName],
+                                args,
+                            });
+                        }
                         return originalAction(...args);
                     };
                 }
@@ -135,12 +139,14 @@ export class GalacticStore<
                 for (const actionName in sidebarActions) {
                     const originalAction = sidebarActions[actionName];
 
-                    galacticSidebarActions[actionName] = (...args) => {
-                        port.postMessage({ 
-                            type: 'action',
-                            path: ['sidebar', actionName],
-                            args,
-                        });
+                    galacticSidebarActions[actionName] = (galactic: boolean = true, ...args) => {
+                        if (galactic) {
+                            port.postMessage({ 
+                                type: 'action',
+                                path: ['sidebar', actionName],
+                                args,
+                            });
+                        }
                         return originalAction(...args);
                     };
                 }
@@ -161,11 +167,11 @@ export class GalacticStore<
                 if (message.type === 'action') {
                     const [path, actionName] = message.path;
                     if (path === 'global') {
-                        globalStore.actions[actionName](...message.args);
+                        globalStore.actions[actionName](false, ...message.args);
                     } else if (path === 'tab') {
-                        tabStore.actions[actionName](...message.args);
+                        tabStore.actions[actionName](false, ...message.args);
                     } else if (path === 'sidebar') {
-                        sidebarStore.actions[actionName](...message.args);
+                        sidebarStore.actions[actionName](false, ...message.args);
                     }
                 }
             });
@@ -190,12 +196,14 @@ export class GalacticStore<
                 for (const actionName in globalActions) {
                     const originalAction = globalActions[actionName];
 
-                    galacticGlobalActions[actionName] = (...args) => {
-                        port.postMessage({ 
-                            type: 'action',
-                            path: ['global', actionName],
-                            args,
-                        });
+                    galacticGlobalActions[actionName] = (galactic: boolean = true, ...args) => {
+                        if (galactic) {
+                            port.postMessage({ 
+                                type: 'action',
+                                path: ['global', actionName],
+                                args,
+                            });
+                        }
                         return originalAction(...args);
                     };
                 }
@@ -208,12 +216,14 @@ export class GalacticStore<
                 for (const actionName in tabActions) {
                     const originalAction = tabActions[actionName];
 
-                    galacticTabActions[actionName] = (...args) => {
-                        port.postMessage({ 
-                            type: 'action',
-                            path: ['tab', actionName],
-                            args,
-                        });
+                    galacticTabActions[actionName] = (galactic: boolean = true, ...args) => {
+                        if (galactic) {
+                            port.postMessage({ 
+                                type: 'action',
+                                path: ['tab', actionName],
+                                args,
+                            });
+                        }
                         return originalAction(...args);
                     };
                 }
@@ -226,12 +236,14 @@ export class GalacticStore<
                 for (const actionName in guideCreatorActions) {
                     const originalAction = guideCreatorActions[actionName];
 
-                    galacticGuideCreatorActions[actionName] = (...args) => {
-                        port.postMessage({ 
-                            type: 'action',
-                            path: ['guidecreator', actionName],
-                            args,
-                        });
+                    galacticGuideCreatorActions[actionName] = (galactic: boolean = true, ...args) => {
+                        if (galactic) {
+                            port.postMessage({ 
+                                type: 'action',
+                                path: ['guidecreator', actionName],
+                                args,
+                            });
+                        }
                         return originalAction(...args);
                     };
                 }
@@ -252,11 +264,11 @@ export class GalacticStore<
                 if (message.type === 'action') {
                     const [path, actionName] = message.path;
                     if (path === 'global') {
-                        globalStore.actions[actionName](...message.args);
+                        globalStore.actions[actionName](false, ...message.args);
                     } else if (path === 'tab') {
-                        tabStore.actions[actionName](...message.args);
+                        tabStore.actions[actionName](false, ...message.args);
                     } else if (path === 'sidebar') {
-                        guideCreatorStore.actions[actionName](...message.args);
+                        guideCreatorStore.actions[actionName](false, ...message.args);
                     }
                 }
             });

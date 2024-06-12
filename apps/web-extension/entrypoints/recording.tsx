@@ -1,3 +1,4 @@
+import { createEffect } from 'solid-js';
 import { GalacticGuideCreatorStore } from '@cyberguide/web-extension';
 export default defineUnlistedScript({
     main() {
@@ -6,5 +7,8 @@ export default defineUnlistedScript({
         console.log('isRecording:', store.tab.getters.isRecording());
         store.tab.actions.startRecording();
         console.log('store.tab.actions.startRecording() called');
+        createEffect(() => {
+            console.log('Recording:', store.tab.state.recording);
+        });
     },
 });
