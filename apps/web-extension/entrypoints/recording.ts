@@ -5,5 +5,6 @@ export default defineUnlistedScript({
         const store = GalacticGuideCreatorStore(browser);
         console.log('isRecording:', store.tab.getters.isRecording());
         store.tab.actions.startRecording();
+        console.log('store.tab.actions.startRecording() called');
     },
 });

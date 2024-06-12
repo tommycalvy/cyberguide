@@ -11,7 +11,7 @@ export default defineConfig({
         plugins: [Solid()],
     }),
     manifest: {
-        permissions: ['activeTab', 'scripting'],
+        permissions: ['activeTab', 'scripting', 'sidePanel'],
         action: {
             default_title: 'Cyberguide',
         },

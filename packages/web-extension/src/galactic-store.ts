@@ -38,7 +38,7 @@ interface GalaticStoreOptions<
 }
 
 interface ChannelOptions {
-    tabId?: number;
+    tabId?: string;
     runtime: Runtime.Static;
 }
 
@@ -90,7 +90,7 @@ export class GalacticStore<
         return ({ tabId, runtime }: ChannelOptions) => {
             const connectId = tabId ? portName + `#${tabId}` : portName;
 
-            const port = runtime.connect(connectId);
+            const port = runtime.connect({ name: connectId });
 
             const createGlobalActions = (setState: SetStoreFunction<GlobalState>, state: GlobalState) => {
 
@@ -181,7 +181,7 @@ export class GalacticStore<
         return ({ tabId, runtime }: ChannelOptions) => {
             const connectId = tabId ? portName + `#${tabId}` : portName;
 
-            const port = runtime.connect(connectId);
+            const port = runtime.connect({ name: connectId });
 
             const createGlobalActions = (setState: SetStoreFunction<GlobalState>, state: GlobalState) => {
 
@@ -199,7 +199,7 @@ export class GalacticStore<
                         return originalAction(...args);
                     };
                 }
-                return galacticGlobalActions;
+                return galacticGlobalActions as GlobalActions;
             };
 
             const createTabActions = (setState: SetStoreFunction<TabState>, state: TabState) => {
@@ -217,7 +217,7 @@ export class GalacticStore<
                         return originalAction(...args);
                     };
                 }
-                return galacticTabActions;
+                return galacticTabActions as TabActions;
             };
                 
             const createGuideCreatorActions = (setState: SetStoreFunction<GuideCreatorState>, state: GuideCreatorState) => {
@@ -235,7 +235,7 @@ export class GalacticStore<
                         return originalAction(...args);
                     };
                 }
-                return galacticGuideCreatorActions;
+                return galacticGuideCreatorActions as GuideCreatorActions;
             };
 
             const globalStore = createFluxStore(this._globalStore.state, { 
