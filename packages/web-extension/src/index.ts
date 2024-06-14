@@ -3,5 +3,7 @@ export { initRecordScript } from './record-script';
 export { 
     GalacticBackgroundStore,
     GalacticSidebarStore,
-    GalacticGuideCreatorStore
+    GalacticGuideCreatorStore,
+    TestSidebarStore,
+    testSidebarStore,
 } from './galactic-state';

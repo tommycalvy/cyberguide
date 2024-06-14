@@ -29,24 +29,24 @@ const galacticStore = new GalacticStore({
         },
         sidebar: {
             state: {
-                test: false,
+                sidebar: true,
             },
             getters: (state) => ({
-                isTest: () => state.test,
+                isSidebar: () => state.sidebar,
             }),
             actions: (setState, state) => ({
-                setTest: (test) => setState('test', test),
+                setSidebar: (test) => setState('sidebar', test),
             }),
         },
         guideCreator: {
             state: {
-                test: false,
+                guidecreator: true,
             },
             getters: (state) => ({
-                isTest: () => state.test,
+                isGuidecreator: () => state.guidecreator,
             }),
             actions: (setState, state) => ({
-                setTest: (test) => setState('test', test),
+                setGuidecreator: (test) => setState('guidecreator', test),
             }),
         },
     },
@@ -56,3 +56,6 @@ export const GalacticSidebarStore = galacticStore.createSidebarStore();
 export const galacticGuideCreatorStore = galacticStore.createGuideCreatorStore();
 export type GalacticGuideCreatorStore = ReturnType<typeof galacticGuideCreatorStore>;
 export const GalacticBackgroundStore = galacticStore.createBackgroundStore();
+
+export const testSidebarStore = galacticStore.createChannelStore('sidebar');
+export type TestSidebarStore = ReturnType<typeof testSidebarStore>;

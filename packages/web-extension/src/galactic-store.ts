@@ -84,6 +84,118 @@ export class GalacticStore<
         this._logging = logging || false;
     }
 
+    createChannelStore(channelName: 'sidebar' | 'guidecreator') {
+        const portName = `${this._namespace}-${channelName}`;
+
+        return ({ tabId, runtime }: ChannelOptions) => {
+            const connectId = tabId ? portName + `#${tabId}` : portName;
+
+            const port = runtime.connect({ name: connectId });
+
+            const globalActions = this.createActions('global', port) as 
+                (setState: SetStoreFunction<GlobalState>, state: GlobalState) => GlobalActions;
+
+            const tabActions = this.createActions('tab', port) as
+                (setState: SetStoreFunction<TabState>, state: TabState) => TabActions;
+
+            const globalStore = createFluxStore(this._globalStore.state, { 
+                actions: globalActions, getters: this._globalStore.getters });
+
+            const tabStore = createFluxStore(this._tabStore.state, {
+                actions: tabActions, getters: this._tabStore.getters });
+
+            if (channelName === 'sidebar') {
+                const sidebarActions = this.createActions('sidebar', port) as
+                    (setState: SetStoreFunction<SidebarState>, state: SidebarState) => SidebarActions;
+                const sidebarStore = createFluxStore(this._sidebarStore.state, {
+                    actions: sidebarActions, getters: this._sidebarStore.getters
+                });
+                port.onMessage.addListener((message) => {
+                    if (this._logging) console.log('Galactic message:', message);
+                    if (message.type === 'action') {
+                        const [path, actionName] = message.path;
+                        if (path === 'global') {
+                            globalStore.actions[actionName](false, ...message.args);
+                        } else if (path === 'tab') {
+                            tabStore.actions[actionName](false, ...message.args);
+                        } else if (path === channelName) {
+                            sidebarStore.actions[actionName](false, ...message.args);
+                        }
+                    }
+                });
+                return { global: globalStore, tab: tabStore, sidebar: sidebarStore };
+            } else {
+                const guideCreatorActions = this.createActions('guidecreator', port) as
+                    (setState: SetStoreFunction<GuideCreatorState>, state: GuideCreatorState) => GuideCreatorActions;
+                const guideCreatorStore = createFluxStore(this._guideCreatorStore.state, {
+                    actions: guideCreatorActions, getters: this._guideCreatorStore.getters
+                });
+                port.onMessage.addListener((message) => {
+                    if (this._logging) console.log('Galactic message:', message);
+                    if (message.type === 'action') {
+                        const [path, actionName] = message.path;
+                        if (path === 'global') {
+                            globalStore.actions[actionName](false, ...message.args);
+                        } else if (path === 'tab') {
+                            tabStore.actions[actionName](false, ...message.args);
+                        } else if (path === channelName) {
+                            guideCreatorStore.actions[actionName](false, ...message.args);
+                        }
+                    }
+                });
+                return { global: globalStore, tab: tabStore, guidecreator: guideCreatorStore };
+            }
+        };
+    }
+
+    createActions(scope: 'global' | 'tab' | 'sidebar' | 'guidecreator', port: Runtime.Port) {
+        const galacticActions: AnyFunctionsRecord = {};
+        const modifyActions = (actions: AnyFunctionsRecord) => {
+            for (const actionName in actions) {
+                const originalAction = actions[actionName];
+
+                galacticActions[actionName] = (galactic: boolean = true, ...args) => {
+                    if (galactic) {
+                        port.postMessage({ 
+                            type: 'action',
+                            path: ['guidecreator', actionName],
+                            args,
+                        });
+                    }
+                    return originalAction(...args);
+                };
+            }
+            return galacticActions;
+        }
+        const actionCreator = {
+            ['global']: () => {
+                return (setState: SetStoreFunction<GlobalState>, state: GlobalState) => {
+                    const globalActions = this._globalStore.actions(setState, state);
+                    return modifyActions(globalActions) as GlobalActions;
+                }
+            },
+            ['tab']: () => {
+                return (setState: SetStoreFunction<TabState>, state: TabState) => {
+                    const tabActions = this._tabStore.actions(setState, state);
+                    return modifyActions(tabActions) as TabActions;
+                }
+            },
+            ['sidebar']: () => {
+                return (setState: SetStoreFunction<SidebarState>, state: SidebarState) => {
+                    const sidebarActions = this._sidebarStore.actions(setState, state);
+                    return modifyActions(sidebarActions) as SidebarActions;
+                }
+            },
+            ['guidecreator']: () => {
+                return (setState: SetStoreFunction<GuideCreatorState>, state: GuideCreatorState) => {
+                    const guideCreatorActions = this._guideCreatorStore.actions(setState, state);
+                    return modifyActions(guideCreatorActions) as GuideCreatorActions;
+                }
+            },
+        }
+        return actionCreator[scope]();
+    }
+
     createSidebarStore() {
         const portName = `${this._namespace}-sidebar`;
 

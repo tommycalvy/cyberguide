@@ -1,4 +1,5 @@
 import { GalacticSidebarStore } from '@cyberguide/web-extension';
+import { testSidebarStore, TestSidebarStore } from '@cyberguide/web-extension';
 import { Show } from 'solid-js';
 
 function App() {
