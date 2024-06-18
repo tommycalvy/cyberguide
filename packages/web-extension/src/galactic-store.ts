@@ -158,7 +158,7 @@ export class GalacticStore<
                     if (galactic) {
                         port.postMessage({ 
                             type: 'action',
-                            path: ['guidecreator', actionName],
+                            path: [scope, actionName],
                             args,
                         });
                     }
@@ -194,200 +194,6 @@ export class GalacticStore<
             },
         }
         return actionCreator[scope]();
-    }
-
-    createSidebarStore() {
-        const portName = `${this._namespace}-sidebar`;
-
-        return ({ tabId, runtime }: ChannelOptions) => {
-            const connectId = tabId ? portName + `#${tabId}` : portName;
-
-            const port = runtime.connect({ name: connectId });
-
-            const createGlobalActions = (setState: SetStoreFunction<GlobalState>, state: GlobalState) => {
-
-                const galacticGlobalActions: AnyFunctionsRecord = {};
-                const globalActions = this._globalStore.actions(setState, state);
-                for (const actionName in globalActions) {
-                    const originalAction = globalActions[actionName];
-
-                    galacticGlobalActions[actionName] = (galactic: boolean = true, ...args) => {
-                        if (galactic) {
-                            port.postMessage({ 
-                                type: 'action',
-                                path: ['global', actionName],
-                                args,
-                            });
-                        }
-                        return originalAction(...args);
-                    };
-                }
-                return galacticGlobalActions as GlobalActions;
-            };
-
-            const createTabActions = (setState: SetStoreFunction<TabState>, state: TabState) => {
-                const galacticTabActions: AnyFunctionsRecord = {};
-                const tabActions = this._tabStore.actions(setState, state);
-                for (const actionName in tabActions) {
-                    const originalAction = tabActions[actionName];
-
-                    galacticTabActions[actionName] = (galactic: boolean = true, ...args) => {
-                        if (galactic) {
-                            port.postMessage({ 
-                                type: 'action',
-                                path: ['tab', actionName],
-                                args,
-                            });
-                        }
-                        return originalAction(...args);
-                    };
-                }
-                return galacticTabActions as TabActions;
-            };
-                
-            const createSidebarActions = (setState: SetStoreFunction<SidebarState>, state: SidebarState) => {
-                const galacticSidebarActions: AnyFunctionsRecord = {};
-                const sidebarActions = this._sidebarStore.actions(setState, state);
-                for (const actionName in sidebarActions) {
-                    const originalAction = sidebarActions[actionName];
-
-                    galacticSidebarActions[actionName] = (galactic: boolean = true, ...args) => {
-                        if (galactic) {
-                            port.postMessage({ 
-                                type: 'action',
-                                path: ['sidebar', actionName],
-                                args,
-                            });
-                        }
-                        return originalAction(...args);
-                    };
-                }
-                return galacticSidebarActions as SidebarActions;
-            };
-
-            const globalStore = createFluxStore(this._globalStore.state, { 
-                actions: createGlobalActions, getters: this._globalStore.getters });
-
-            const tabStore = createFluxStore(this._tabStore.state, {
-                actions: createTabActions, getters: this._tabStore.getters });
-
-            const sidebarStore = createFluxStore(this._sidebarStore.state, {
-                actions: createSidebarActions, getters: this._sidebarStore.getters });
-
-            port.onMessage.addListener((message) => {
-                if (this._logging) console.log('Galactic message:', message);
-                if (message.type === 'action') {
-                    const [path, actionName] = message.path;
-                    if (path === 'global') {
-                        globalStore.actions[actionName](false, ...message.args);
-                    } else if (path === 'tab') {
-                        tabStore.actions[actionName](false, ...message.args);
-                    } else if (path === 'sidebar') {
-                        sidebarStore.actions[actionName](false, ...message.args);
-                    }
-                }
-            });
-
-            return { global: globalStore, tab: tabStore, sidebar: sidebarStore };
-        };
-
-    }
-
-    createGuideCreatorStore() {
-        const portName = `${this._namespace}-guidecreator`;
-
-        return ({ tabId, runtime }: ChannelOptions) => {
-            const connectId = tabId ? portName + `#${tabId}` : portName;
-
-            const port = runtime.connect({ name: connectId });
-
-            const createGlobalActions = (setState: SetStoreFunction<GlobalState>, state: GlobalState) => {
-
-                const galacticGlobalActions: AnyFunctionsRecord = {};
-                const globalActions = this._globalStore.actions(setState, state);
-                for (const actionName in globalActions) {
-                    const originalAction = globalActions[actionName];
-
-                    galacticGlobalActions[actionName] = (galactic: boolean = true, ...args) => {
-                        if (galactic) {
-                            port.postMessage({ 
-                                type: 'action',
-                                path: ['global', actionName],
-                                args,
-                            });
-                        }
-                        return originalAction(...args);
-                    };
-                }
-                return galacticGlobalActions as GlobalActions;
-            };
-
-            const createTabActions = (setState: SetStoreFunction<TabState>, state: TabState) => {
-                const galacticTabActions: AnyFunctionsRecord = {};
-                const tabActions = this._tabStore.actions(setState, state);
-                for (const actionName in tabActions) {
-                    const originalAction = tabActions[actionName];
-
-                    galacticTabActions[actionName] = (galactic: boolean = true, ...args) => {
-                        if (galactic) {
-                            port.postMessage({ 
-                                type: 'action',
-                                path: ['tab', actionName],
-                                args,
-                            });
-                        }
-                        return originalAction(...args);
-                    };
-                }
-                return galacticTabActions as TabActions;
-            };
-                
-            const createGuideCreatorActions = (setState: SetStoreFunction<GuideCreatorState>, state: GuideCreatorState) => {
-                const galacticGuideCreatorActions: AnyFunctionsRecord = {};
-                const guideCreatorActions = this._guideCreatorStore.actions(setState, state);
-                for (const actionName in guideCreatorActions) {
-                    const originalAction = guideCreatorActions[actionName];
-
-                    galacticGuideCreatorActions[actionName] = (galactic: boolean = true, ...args) => {
-                        if (galactic) {
-                            port.postMessage({ 
-                                type: 'action',
-                                path: ['guidecreator', actionName],
-                                args,
-                            });
-                        }
-                        return originalAction(...args);
-                    };
-                }
-                return galacticGuideCreatorActions as GuideCreatorActions;
-            };
-
-            const globalStore = createFluxStore(this._globalStore.state, { 
-                actions: createGlobalActions, getters: this._globalStore.getters });
-
-            const tabStore = createFluxStore(this._tabStore.state, {
-                actions: createTabActions, getters: this._tabStore.getters });
-
-            const guideCreatorStore = createFluxStore(this._guideCreatorStore.state, {
-                actions: createGuideCreatorActions, getters: this._guideCreatorStore.getters });
-
-            port.onMessage.addListener((message) => {
-                if (this._logging) console.log('Galactic Message:', message);
-                if (message.type === 'action') {
-                    const [path, actionName] = message.path;
-                    if (path === 'global') {
-                        globalStore.actions[actionName](false, ...message.args);
-                    } else if (path === 'tab') {
-                        tabStore.actions[actionName](false, ...message.args);
-                    } else if (path === 'sidebar') {
-                        guideCreatorStore.actions[actionName](false, ...message.args);
-                    }
-                }
-            });
-
-            return { global: globalStore, tab: tabStore, guideCreator: guideCreatorStore };
-        };
-
     }
 
     createBackgroundStore() {
@@ -456,53 +262,38 @@ export class GalacticStore<
                     if (this._logging) console.log(`${newPort.name} message:`, message);
                     if (message.type === 'action') {
                         const [path, actionName] = message.path;
+                        let port_set: Set<Port>;
                         if (path === 'global') {
-                            ports.forEach((port) => {
-                                if (port !== newPort) {
-                                    port.runtimePort.postMessage({ 
-                                        type: 'action',     
-                                        path: ['global', actionName],
-                                        args: message.args,
-                                    });
-                                }
-                            });
+                            port_set = ports;
                         } else if (path === 'tab') {
-                            const tabPorts = tab_ports.get(newPort.tabId);
-                            if (!tabPorts) {
+                            const tab_port_set = tab_ports.get(newPort.tabId);
+                            if (!tab_port_set) {
                                 const err = new BaseError('No tab ports found', { context: { tabId: newPort.tabId } });
                                 if (this._logging) console.error(err);
                                 return errorCallback(err);
+                            } else {
+                                port_set = tab_port_set;
                             }
-                            tabPorts.forEach((port) => {
-                                if (port !== newPort) {
-                                    port.runtimePort.postMessage({ 
-                                        type: 'action',
-                                        path: ['tab', actionName],
-                                        args: message.args,
-                                    });
-                                }
-                            });
                         } else if (path === 'sidebar') {
-                            sidebar_ports.forEach((port) => {
-                                if (port !== newPort) {
-                                    port.runtimePort.postMessage({ 
-                                        type: 'action',
-                                        path: ['sidebar', actionName],
-                                        args: message.args,
-                                    });
-                                }
-                            });
+                            port_set = sidebar_ports;
                         } else if (path === 'guidecreator') {
-                            guideCreator_ports.forEach((port) => {
-                                if (port !== newPort) {
-                                    port.runtimePort.postMessage({ 
-                                        type: 'action',
-                                        path: ['guidecreator', actionName],
-                                        args: message.args,
-                                    });
-                                }
-                            });
+                            port_set = guideCreator_ports;
+                        } else {
+                            const err = new BaseError('Invalid path', { context: { path } });
+                            if (this._logging) console.error(err);
+                            return errorCallback(err);
                         }
+                        port_set.forEach((port) => {
+                            if (port !== newPort) {
+                                port.runtimePort.postMessage({ 
+                                    type: 'action',
+                                    path: [path, actionName],
+                                    args: message.args,
+                                });
+                            }
+                        });
+                    } else if (message.type === 'rpc') {
+                        if (this._logging) console.log('RPC message:', message);
                     } else {
                         const err = new BaseError('Invalid message type', { context: { message } });
                         if (this._logging) console.error(err);

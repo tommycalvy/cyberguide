@@ -52,10 +52,7 @@ const galacticStore = new GalacticStore({
     },
 });
 
-export const GalacticSidebarStore = galacticStore.createSidebarStore();
-export const galacticGuideCreatorStore = galacticStore.createGuideCreatorStore();
+export const galacticSidebarStore = galacticStore.createChannelStore('sidebar');
+export const galacticGuideCreatorStore = galacticStore.createChannelStore('guidecreator');
 export type GalacticGuideCreatorStore = ReturnType<typeof galacticGuideCreatorStore>;
-export const GalacticBackgroundStore = galacticStore.createBackgroundStore();
-
-export const testSidebarStore = galacticStore.createChannelStore('sidebar');
-export type TestSidebarStore = ReturnType<typeof testSidebarStore>;
+export const galacticBackgroundStore = galacticStore.createBackgroundStore();

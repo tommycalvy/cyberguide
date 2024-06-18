@@ -1,9 +1,8 @@
 export { RecordingManager } from './recording-manager';
 export { initRecordScript } from './record-script';
-export { 
-    GalacticBackgroundStore,
-    GalacticSidebarStore,
-    GalacticGuideCreatorStore,
-    TestSidebarStore,
-    testSidebarStore,
+export type { GalacticGuideCreatorStore } from './galactic-state';
+export {
+    galacticGuideCreatorStore,
+    galacticSidebarStore,
+    galacticBackgroundStore,
 } from './galactic-state';

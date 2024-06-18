@@ -1,13 +1,13 @@
 import { MessageName } from './utils';
 import type { Runtime } from 'webextension-polyfill';
-import { GalacticGuideCreatorStore, galacticGuideCreatorStore } from './galactic-state';
+import { galacticGuideCreatorStore, GalacticGuideCreatorStore } from './galactic-state';
 import { createEffect } from 'solid-js';
 
 export class RecordingManager {
 
     private runtime: Runtime.Static;
     private recordScriptUrl: string;
-    private store: GalacticGuideCreatorStore;;
+    private store: GalacticGuideCreatorStore;
 
     constructor(runtime: Runtime.Static, recordScriptUrl: string) {
         this.runtime = runtime;
