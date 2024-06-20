@@ -121,6 +121,8 @@ export class GalacticStore<
                         } else if (path === channelName) {
                             sidebarStore.actions[actionName](false, ...message.args);
                         }
+                    } else if (message.type === 'database') {
+                        
                     }
                 });
                 return { global: globalStore, tab: tabStore, sidebar: sidebarStore };
