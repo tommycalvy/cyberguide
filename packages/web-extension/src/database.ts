@@ -59,7 +59,7 @@ class IndexedDBManager<
                 upgrade(db) {
                     for (const storeName of Object.keys(dbSchema) as StoreNames<TDB>[]) {
                         if (!db.objectStoreNames.contains(storeName)) {
-                            db.createObjectStore(storeName);
+                            db.createObjectStore(storeName, { autoIncrement: true });
                         }
                     }
                 }
@@ -83,23 +83,36 @@ class IndexedDBManager<
     createDatabaseMethods() {
 
         return (runtime: Runtime.Static, port: Runtime.Port) => {
-            let getters: AnyFunctionRecord = {};
-            let setters: AnyFunctionRecord = {};
-            
-            for (const method in this.config.dbMethods.setters) {
-                setters[method] = (...args: any[]) => {
-                    port.postMessage({ type: 'database', method, args });
-                }
-            }
+            console.log('returning database methods');
+            console.log(this.config.dbMethods.setters);
+            console.log(this.config.dbMethods.getters);
+            const getters: AnyFunctionRecord = {};
+            const setters: AnyFunctionRecord = {};
 
-            for (const method in this.config.dbMethods.getters) {
-                getters[method] = (...args: any[]) => {
-                    return createResource(async () => {
-                        const response = await runtime.sendMessage({ type: 'database', method, args });
-                        return response;
-                    });
+            const createGetters = (db: IDBPDatabase<TDB>) => {
+                const originalGetters = this.config.dbMethods.getters(db);
+                for (const method in originalGetters) {
+                    console.log('method', method);
+                    getters[method] = (...args: any[]) => {
+                        return createResource(async () => {
+                            const response = await runtime.sendMessage({ type: 'database', method, args });
+                            return response;
+                        });
+                    }
+                }
+            };
+
+            const createSetters = (db: IDBPDatabase<TDB>) => {
+                const originalSetters = this.config.dbMethods.setters(db);
+                for (const method in originalSetters) {
+                    console.log('method', method);
+                    setters[method] = (...args: any[]) => {
+                        port.postMessage({ type: 'database', method, args });
+                    }
                 }
             }
+            createGetters({} as IDBPDatabase<TDB>);
+            createSetters({} as IDBPDatabase<TDB>);
 
             return { getters, setters } as { getters: TransformedGetters<TGetters>, setters: TSetters };
         }
@@ -107,23 +120,21 @@ class IndexedDBManager<
     }
 }
 
-type EventData = {
-    id: string;
+type StepEvents = {
     events: eventWithTime[];
 };
 
-interface EventsDB extends DBSchema {
-    events: {
-        key: string;
-        value: EventData;
+interface StepsDB extends DBSchema {
+    step: {
+        key: number;
+        value: StepEvents;
     };
 };
 
-const eventsDBSchema: EventsDB = {
-    events: {
-        key: 'id',
+const stepsDBSchema: StepsDB = {
+    step: {
+        key: 0,
         value: {
-            id: '',
             events: [],
         },
     },
@@ -132,18 +143,20 @@ const eventsDBSchema: EventsDB = {
 const dbManager = new IndexedDBManager({
     dbName: 'cyberguide',
     dbVersion: 1,
-    dbSchema: eventsDBSchema,
+    dbSchema: stepsDBSchema,
     dbMethods: {
         getters: (db) => ({
-            getEvents: async () => {
-                return await db.get('events', 'events');
+            getAllSteps: async () => {
+                return await db.getAll('step');
             },
         }),
         setters: (db) => ({
-            addEvent: async (event: eventWithTime) => {
-                await db.add('events', event, event);
+            addStep: async (stepEvents: StepEvents) => {
+                await db.add('step', stepEvents);
             },
         }),
     },
 });
 
+export const registerDatabase = dbManager.createRegisterDatabase();
+export const databaseMethods = dbManager.createDatabaseMethods();

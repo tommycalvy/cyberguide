@@ -10,8 +10,16 @@ function App() {
         tab: { 
             state: { recording },
             actions: { startRecording, stopRecording }
-        } 
+        },
+        dbMethods: { getters: { getAllSteps }}, 
     } = galacticSidebarStore({ tabId, runtime: browser.runtime });
+
+    const [steps, { refetch }] = getAllSteps();
+    console.log(steps());
+    const printSteps = async () => {
+        refetch();
+        console.log(steps());
+    };
 
     return (
         <>
@@ -27,6 +35,12 @@ function App() {
                 </button>
                 <button onClick={() => stopRecording()}>
                     Stop Recording
+                </button>
+            </div>
+            <br />
+            <div>
+                <button onClick={printSteps}>
+                    Refresh Steps
                 </button>
             </div>
         </>

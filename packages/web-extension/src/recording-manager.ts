@@ -2,24 +2,35 @@ import { MessageName } from './utils';
 import type { Runtime } from 'webextension-polyfill';
 import { galacticGuideCreatorStore, GalacticGuideCreatorStore } from './galactic-state';
 import { createEffect } from 'solid-js';
+import { eventWithTime } from 'rrweb';
+
+type EmitEventMessage = {
+    message: MessageName.EmitEvent;
+    event: eventWithTime;
+};
 
 export class RecordingManager {
 
     private runtime: Runtime.Static;
     private recordScriptUrl: string;
     private store: GalacticGuideCreatorStore;
+    private newEvents: eventWithTime[] = [];
 
     constructor(runtime: Runtime.Static, recordScriptUrl: string) {
         this.runtime = runtime;
         this.recordScriptUrl = recordScriptUrl;
         this.store = galacticGuideCreatorStore({ runtime });
+        console.log("this.store", this.store);
         window.addEventListener('message', this.messageHandler());
-        createEffect(() => {
+        createEffect(async () => {
             if (this.store.tab.state.recording) {
                 this.startRecording();
+                this.newEvents = [];
                 console.log('Start recording message received');
             } else {
                 window.postMessage({ message: MessageName.StopRecord });
+                await this.store.dbMethods.setters.addStep({ events: this.newEvents })
+                this.newEvents = [];
                 console.log('Stop recording message received');
             }
         });
@@ -55,7 +66,7 @@ export class RecordingManager {
                 },
                 [MessageName.EmitEvent]: (event) => {
                     console.log('Event emitted');
-                    //TODO: Send some rpc to the background script to store the event
+                    this.newEvents.push((event.data as EmitEventMessage).event);
                 },
             };
             if (eventHandler[data.message]) eventHandler[data.message](event);
@@ -67,9 +78,12 @@ export class RecordingManager {
             const eventHandler: Record<string, () => void> = {
                 [MessageName.StartRecord]: () => {
                     this.startRecording();
+                    this.newEvents = [];
                 },
                 [MessageName.StopRecord]: () => {
                     window.postMessage({ message: MessageName.StopRecord });
+                    this.store.dbMethods.setters.addStep({ events: this.newEvents })
+                    this.newEvents = [];
                 },
                 [MessageName.PauseRecord]: () => {
                     window.postMessage({ message: MessageName.StopRecord });

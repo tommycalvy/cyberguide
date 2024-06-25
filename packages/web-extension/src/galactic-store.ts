@@ -2,6 +2,7 @@ import { BaseError } from './error';
 import type { Runtime } from 'webextension-polyfill';
 import type { SetStoreFunction } from "solid-js/store";
 import { AnyFunctionsRecord, createFluxStore } from './flux-store';
+import { registerDatabase, databaseMethods } from './database';
 
 interface FluxStore<
     TState extends object,
@@ -104,6 +105,8 @@ export class GalacticStore<
             const tabStore = createFluxStore(this._tabStore.state, {
                 actions: tabActions, getters: this._tabStore.getters });
 
+            const dbMethods = databaseMethods(runtime, port);
+
             if (channelName === 'sidebar') {
                 const sidebarActions = this.createActions('sidebar', port) as
                     (setState: SetStoreFunction<SidebarState>, state: SidebarState) => SidebarActions;
@@ -125,7 +128,7 @@ export class GalacticStore<
                         
                     }
                 });
-                return { global: globalStore, tab: tabStore, sidebar: sidebarStore };
+                return { global: globalStore, tab: tabStore, sidebar: sidebarStore, dbMethods };
             } else {
                 const guideCreatorActions = this.createActions('guidecreator', port) as
                     (setState: SetStoreFunction<GuideCreatorState>, state: GuideCreatorState) => GuideCreatorActions;
@@ -145,7 +148,7 @@ export class GalacticStore<
                         }
                     }
                 });
-                return { global: globalStore, tab: tabStore, guidecreator: guideCreatorStore };
+                return { global: globalStore, tab: tabStore, guidecreator: guideCreatorStore, dbMethods };
             }
         };
     }
@@ -199,11 +202,13 @@ export class GalacticStore<
     }
 
     createBackgroundStore() {
-        return (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
+        return async (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
             const ports = new Set<Port>(); 
             const tab_ports = new Map<string, Set<Port>>();
             const sidebar_ports = new Set<Port>();
             const guideCreator_ports = new Set<Port>();
+
+            const dbMethod = await registerDatabase(runtime);
 
             runtime.onConnect.addListener((runtimePort) => { 
 
@@ -294,8 +299,9 @@ export class GalacticStore<
                                 });
                             }
                         });
-                    } else if (message.type === 'rpc') {
-                        if (this._logging) console.log('RPC message:', message);
+                    } else if (message.type === 'database') {
+                        if (this._logging) console.log('Database rpc message:', message);
+                        dbMethod(message.method, message.args);
                     } else {
                         const err = new BaseError('Invalid message type', { context: { message } });
                         if (this._logging) console.error(err);
