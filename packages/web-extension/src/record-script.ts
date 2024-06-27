@@ -1,4 +1,4 @@
-import { record, type eventWithTime, type recordOptions } from 'rrweb';
+import { record, type eventWithTime, type recordOptions, MouseInteractions } from 'rrweb';
 import { MessageName, isInCrossOriginIFrame } from './utils';
 
 /**
@@ -21,6 +21,14 @@ function startRecord(config: recordOptions<eventWithTime>) {
         emit: (event) => {
             events.push(event);
             postMessage({ message: MessageName.EmitEvent, event });
+        },
+        hooks: {
+            mouseInteraction: ({ type }) => {
+                if (type === MouseInteractions.Click || type === MouseInteractions.MouseUp || 
+                    type === MouseInteractions.DblClick || type === MouseInteractions.TouchEnd) {
+                    postMessage({ message: MessageName.StepDetected });
+                }
+            },
         },
         ...config,
     }) || null;

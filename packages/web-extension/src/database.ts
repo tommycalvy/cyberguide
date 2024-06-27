@@ -74,7 +74,7 @@ class IndexedDBManager<
             }));
 
             return <K extends keyof TSetters>(method: K, args: Parameters<TSetters[K]>) => {
-                return this.config.dbMethods.setters(db)[method](db, ...args);
+                return this.config.dbMethods.setters(db)[method](...args);
             }
         }
     }

@@ -1,5 +1,6 @@
 // all message names for postMessage API
 export enum MessageName {
+    StepDetected = 'cyberguide-extension-step-detected',
     RecordScriptReady = 'cyberguide-extension-record-script-ready',
     StartRecord = 'cyberguide-extension-start-record',
     RecordStarted = 'cyberguide-extension-record-started',

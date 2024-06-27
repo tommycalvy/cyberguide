@@ -2,7 +2,7 @@ import { MessageName } from './utils';
 import type { Runtime } from 'webextension-polyfill';
 import { galacticGuideCreatorStore, GalacticGuideCreatorStore } from './galactic-state';
 import { createEffect } from 'solid-js';
-import { eventWithTime } from 'rrweb';
+import { EventType, eventWithTime, IncrementalSource, MouseInteractions } from 'rrweb';
 
 type EmitEventMessage = {
     message: MessageName.EmitEvent;
@@ -29,8 +29,6 @@ export class RecordingManager {
                 console.log('Start recording message received');
             } else {
                 window.postMessage({ message: MessageName.StopRecord });
-                await this.store.dbMethods.setters.addStep({ events: this.newEvents })
-                this.newEvents = [];
                 console.log('Stop recording message received');
             }
         });
@@ -68,10 +66,30 @@ export class RecordingManager {
                     console.log('Event emitted');
                     this.newEvents.push((event.data as EmitEventMessage).event);
                 },
+                [MessageName.StepDetected]: () => {
+                    this.saveNewStep();
+                },
             };
             if (eventHandler[data.message]) eventHandler[data.message](event);
         }
     };
+
+    private detectStep(event: eventWithTime) {
+        if (event.type === EventType.IncrementalSnapshot) {
+            if (event.data.source === IncrementalSource.MouseInteraction) {
+                if (event.data.type === MouseInteractions.Click ||
+                    event.data.type === MouseInteractions.MouseUp ||
+                    event.data.type === MouseInteractions.DblClick ||
+                    event.data.type === MouseInteractions.TouchEnd) {
+                }
+            }
+        }
+    }
+
+    private async saveNewStep() {
+        await this.store.dbMethods.setters.addStep({ events: this.newEvents });
+        this.newEvents = [];
+    }
 
     private commandHandler() {
         return (message: string) => {
