@@ -24,8 +24,7 @@ function startRecord(config: recordOptions<eventWithTime>) {
         },
         hooks: {
             mouseInteraction: ({ type }) => {
-                if (type === MouseInteractions.Click || type === MouseInteractions.MouseUp || 
-                    type === MouseInteractions.DblClick || type === MouseInteractions.TouchEnd) {
+                if (type === MouseInteractions.Click) {
                     postMessage({ message: MessageName.StepDetected });
                 }
             },

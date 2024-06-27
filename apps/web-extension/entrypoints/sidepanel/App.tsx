@@ -26,16 +26,10 @@ function App() {
             <h1>CyberGuide</h1>
             <div>
                 <Show when={recording} fallback={
-                    <h3>Not Recording!</h3>
+                    <button onClick={() => startRecording()}>Start Capture</button>
                 }>
-                    <h3>Recording!</h3>
+                    <button onClick={() => stopRecording()}>Stop Capture</button>
                 </Show>
-                <button onClick={() => startRecording()}>
-                    Start Recording
-                </button>
-                <button onClick={() => stopRecording()}>
-                    Stop Recording
-                </button>
             </div>
             <br />
             <div>
