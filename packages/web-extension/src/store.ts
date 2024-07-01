@@ -1,4 +1,3 @@
-/*
 import { 
     type FluxStore, type AnyFunctionsRecord, createFluxStore
 } from "@solid-primitives/flux-store";
@@ -20,7 +19,7 @@ interface Channel {
     rpc: rpcDefault | undefined;
 };
 
-
+/*
 interface IBackgroundBuilder {
     setGlobalStore<
         TState extends object,
@@ -134,82 +133,149 @@ class BackgroundBuilder<Supplied> {
     }
 }
 */
-// Helper type for function records
-type AnyFunctionsRecord = Record<string, Function>;
-
-// Dummy interfaces for Store and RPC (provide actual definitions)
-interface StoreDefault {}
-interface FluxStore<TState, TGetters, TActions> {}
-interface RPC<TMethods> {}
 
 // Configuration interface
 interface BackgroundConfig {
     globalStore?: StoreDefault;
     tabStore?: StoreDefault;
-    channels: Record<string, { store?: FluxStore<any, any, any>, rpc?: RPC<any> }>;
+    channels: Record<string, Channel>;
 }
 
 // Builder interfaces
 interface IBuild {
-    build(): BackgroundConfig;
+    build(): Background;
 }
 
-interface ISetGlobalStore<T extends boolean = false> {
-    setGlobalStore<TState, TGetters, TActions>(
+interface ISetGlobalStore<TS extends boolean> {
+    setGlobalStore<
+        TState extends object, 
+        TGetters extends AnyFunctionsRecord,
+        TActions extends AnyFunctionsRecord
+    >(
         store: FluxStore<TState, TGetters, TActions>
-    ): T extends true ? never : IBackgroundBuilder<true>;
+    ): TS extends true ? IBuild & IAddChannel<true, true> : 
+        IAddChannel<true, false> & ISetTabStore<true>;
 }
 
-interface ISetTabStore<T extends boolean = false> {
-    setTabStore<TState, TGetters, TActions>(
+interface ISetTabStore<GS extends boolean> {
+    setTabStore<
+        TState extends object, 
+        TGetters extends AnyFunctionsRecord,
+        TActions extends AnyFunctionsRecord
+    >(
         store: FluxStore<TState, TGetters, TActions>
-    ): T extends true ? never : IBackgroundBuilder<false, true>;
+    ): GS extends true ? IBuild & IAddChannel<true, true> : 
+        IAddChannel<false, true> & ISetGlobalStore<true>;
 }
 
-interface IAddChannel {
-    addChannelStore<TState, TGetters, TActions>(
+interface IAddChannel<GS extends boolean, TS extends boolean> {
+    addChannelStore<
+        TState extends object, 
+        TGetters extends AnyFunctionsRecord,
+        TActions extends AnyFunctionsRecord
+    >(
         name: string, store: FluxStore<TState, TGetters, TActions>
-    ): IBackgroundBuilder;
-    addChannelRPC<TMethods>(name: string, rpc: RPC<TMethods>): IBackgroundBuilder;
+    ): GS & TS extends true ? IBuild & IAddChannel<true, true>: 
+            GS extends true ? IAddChannel<true, false> & ISetTabStore<true> : 
+            TS extends true ? IAddChannel<false, true> & ISetGlobalStore<true> :
+            IAddChannel<false, false> & ISetGlobalStore<false> & ISetTabStore<false>;
+    addChannelRPC<TMethods extends AnyFunctionsRecord>(
+        name: string, rpc: RPC<TMethods>
+    ): GS & TS extends true ? IBuild & IAddChannel<true, true>: 
+            GS extends true ? IAddChannel<true, false> & ISetTabStore<true> : 
+            TS extends true ? IAddChannel<false, true> & ISetGlobalStore<true> :
+            IAddChannel<false, false> & ISetGlobalStore<false> & ISetTabStore<false>;
 }
-
-// The comprehensive builder interface
-interface IBackgroundBuilder<GS extends boolean = false, TS extends boolean = false> 
-    extends IBuild, IAddChannel, ISetGlobalStore<GS>, ISetTabStore<TS> {}
 
 // Builder implementation
-class BackgroundBuilder implements IBackgroundBuilder {
-    private bgConfig: BackgroundConfig = { channels: {} };
+class BackgroundBuilder<GS extends boolean = false, TS extends boolean = false>
+    implements IBuild, IAddChannel<GS, TS>, ISetGlobalStore<TS>, ISetTabStore<GS> {
 
-    constructor() {}
+    constructor(private bgConfig: BackgroundConfig = { channels: {} }) {}
 
-    setGlobalStore<TState, TGetters, TActions>(
+    setGlobalStore<
+        TState extends object, 
+        TGetters extends AnyFunctionsRecord,
+        TActions extends AnyFunctionsRecord
+    >(
         store: FluxStore<TState, TGetters, TActions>
-    ) {
+    ): TS extends true ? IBuild & IAddChannel<true, true> : 
+        IAddChannel<true, false> & ISetTabStore<true>
+    {
         this.bgConfig.globalStore = store;
-        return new BackgroundBuilder();
+        return new BackgroundBuilder<true, TS>(this.bgConfig) as any;
     }
 
-    setTabStore<TState, TGetters, TActions>(store: FluxStore<TState, TGetters, TActions>): this {
+    setTabStore<
+        TState extends object, 
+        TGetters extends AnyFunctionsRecord,
+        TActions extends AnyFunctionsRecord
+    >(
+        store: FluxStore<TState, TGetters, TActions>
+    ): GS extends true ? IBuild & IAddChannel<true, true> : 
+        IAddChannel<false, true> & ISetGlobalStore<true>
+    {
         this.bgConfig.tabStore = store;
-        return this;
+        return new BackgroundBuilder<GS, true>(this.bgConfig) as any;
     }
 
-    addChannelStore<TState, TGetters, TActions>(name: string, store: FluxStore<TState, TGetters, TActions>): this {
-        this.bgConfig.channels[name] = { ...this.bgConfig.channels[name], store };
-        return this;
+    addChannelStore<
+        TState extends object, 
+        TGetters extends AnyFunctionsRecord,
+        TActions extends AnyFunctionsRecord
+    >(
+        name: string, store: FluxStore<TState, TGetters, TActions>
+    ): GS & TS extends true ? IBuild & IAddChannel<true, true>: 
+            GS extends true ? IAddChannel<true, false> & ISetTabStore<true> : 
+            TS extends true ? IAddChannel<false, true> & ISetGlobalStore<true> :
+            IAddChannel<false, false> & ISetGlobalStore<false> & ISetTabStore<false> 
+    {
+        this.bgConfig.channels[name].store = store;
+        return new BackgroundBuilder<GS, TS>(this.bgConfig) as any;
     }
 
-    addChannelRPC<TMethods>(name: string, rpc: RPC<TMethods>): this {
-        this.bgConfig.channels[name] = { ...this.bgConfig.channels[name], rpc };
-        return this;
+    addChannelRPC<TMethods extends AnyFunctionsRecord>(
+        name: string, rpc: RPC<TMethods>
+    ): GS & TS extends true ? IBuild & IAddChannel<true, true>: 
+            GS extends true ? IAddChannel<true, false> & ISetTabStore<true> : 
+            TS extends true ? IAddChannel<false, true> & ISetGlobalStore<true> :
+            IAddChannel<false, false> & ISetGlobalStore<false> & ISetTabStore<false> 
+    {
+        this.bgConfig.channels[name].rpc = rpc;
+        return new BackgroundBuilder<GS, TS>(this.bgConfig) as any;
     }
 
-    build(): BackgroundConfig {
+    build() {
         if (!this.bgConfig.globalStore && !this.bgConfig.tabStore) {
             throw new Error("Either globalStore or tabStore must be set before building.");
         }
-        return this.bgConfig;
+        return new Background(this.bgConfig);
     }
 }
 
+class Background {
+    constructor(private bgConfig: BackgroundConfig) {}
+
+    static new(): IAddChannel<false, false> & ISetGlobalStore<false> & ISetTabStore<false> { 
+        return new BackgroundBuilder();
+    }
+
+    get globalStore() {
+        return this.bgConfig.globalStore;
+    }
+
+    get tabStore() {
+        return this.bgConfig.tabStore;
+    }
+
+    get channels() {
+        return this.bgConfig.channels;
+    }
+}
+
+const bg = Background.new()
+    .setGlobalStore({ state: {}, getters: {}, actions: {} })
+    .setTabStore({ state: {}, getters: {}, actions: {} })
+    .addChannelStore('sidebar', { state: {}, getters: {}, actions: {} })
+    .addChannelRPC('guidecreator', { methods: () => ({}) })
+    .build();
