@@ -5,23 +5,6 @@ import {
 } from "./flux-store";
 import { SetStoreFunction } from "solid-js/store";
 import type { Runtime } from 'webextension-polyfill';
-/*
-    *
-// Configuration interface
-type BackgroundConfig<
-    TGlobalStore extends AnyStore | undefined = undefined, 
-    TTabStore extends AnyStore | undefined = undefined,
-    TChannelStores extends Record<string, AnyStore> = Record<string, never>,
-    TChannelRPCs extends Record<string, AnyRPC> = Record<string, never>,
-> = {
-    global: TGlobalStore;
-    tab: TTabStore;
-    channelRPCs: TChannelRPCs;
-    channelStores: TChannelStores;
-    namespace: string;
-    logging: boolean;
-}
-*/
 
 type BackgroundMethods = {
     database: IDBDatabase;
@@ -30,8 +13,6 @@ type BackgroundMethods = {
 type RPC<TMethods extends AnyFunctionsRecord> = {
     methods: (bg: BackgroundMethods) => TMethods;
 };
-
-type AnyRPC = RPC<any>;
 
 type StoreConfig<
     TState extends object,
@@ -43,10 +24,22 @@ type StoreConfig<
     actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
 };
 
-type AnyStore = StoreConfig<any, any, any>;
 
-type GalacticStores<TName extends string> = Record<TName, FluxStore<any, any, any>>;
+/*
+    type Store<
+TState extends object,
+TGetters extends AnyFunctionsRecord,
+TActions extends AnyFunctionsRecord
+> = {
+    state: TState;
+    getters: TGetters;
+    actions: TActions;
+};
+type GalacticStores<TStores> = {
+    [K in keyof TStores]: FluxStore<TStores[K]['state'], TStores[K]['getters'], TStores[K]['actions']>
+};
 
+*/
 type Options = {
     namespace: string;
     logging: boolean;
@@ -55,7 +48,7 @@ type Options = {
 // Builder implementation
 class BackgroundBuilder<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TChannelRPCs extends Record<string, AnyRPC>,
+    TChannelRPCs extends Record<string, RPC<any>>,
 > {
 
     constructor(
@@ -164,7 +157,7 @@ type ChannelOptions = {
 
 class Background<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TChannelRPCs extends Record<string, AnyRPC>,
+    TChannelRPCs extends Record<string, RPC<any>>,
 > {
     constructor(
         private stores: TStores,
@@ -180,43 +173,26 @@ class Background<
         );
     }
 
-    createChannelMethods<
-        TName extends keyof Omit<TStores, 'global' | 'tab'>
-    >(name: TName) {
+    createChannelMethods(channelName: string) {
 
-        const portName = `${this.options.namespace}-${String(name)}`;
+        const portName = `${this.options.namespace}-${channelName}`;
 
         return ({ tabId, runtime }: ChannelOptions) => {
 
             const connectId = tabId ? `${portName}#${tabId}` : portName;
             const port = runtime.connect({ name: connectId });
 
-            let stores: GalacticStores<keyof TStores> | Record<string,never>;
+            const stores: { 
+                [K in keyof TStores]: FluxStore<
+                    TStores[K]['state'], 
+                    TStores[K]['getters'],
+                    TStores[K]['actions']
+                > } | Record<string, never> = {};
 
             for (const storeName in this.stores) {
-                const store = this.stores[storeName];
-                const scope = storeName;
-                const createActions = this.createActions(store, scope, port);
-            }
-
-            if (this.globalStore) {
-                const globalActions = this.createActions(this.globalStore, 'global', port) as
-                    (setState: SetStoreFunction<TGlobalStore['state']>, state: TGlobalStore['state']) => TGlobalStore['actions'];
-                const globalStore = createFluxStore(this.globalStore.state, {
-                    getters: this.globalStore.getters, actions: globalActions });
-                stores = { ...stores, global: globalStore };
-            }
-
-            if (this.tabStore) {
-                const tabActions = this.createActions(this.tabStore, 'tab', port);
-                stores['tab'] = createFluxStore(this.tabStore.state, {
-                    getters: this.tabStore.getters, actions: tabActions });
-            }
-
-            for (const channelStoreName in this.bgConfig.channelStores) {
-                const channelStore = this.bgConfig.channelStores[channelStoreName];
-                const scope = channelStoreName;
-                const createActions = this.createActions(channelStore, scope, port);
+                const actions = this.createActions(storeName, port);
+                stores[storeName] = createFluxStore(this.stores[storeName].state, {
+                    getters: this.stores[storeName].getters, actions });
             }
 
             port.onMessage.addListener((message) => {
@@ -226,25 +202,23 @@ class Background<
                     console.log(`Method ${method} called with args`, args);
                 }
             });
+
+            return stores;
         };
     }
 
-    createActions<
-        TState extends object, 
-        TGetters extends AnyFunctionsRecord,
-        TActions extends AnyFunctionsRecord
-    >(
-        storeName: keyof TStores,
+    createActions<K extends keyof TStores>(
+        storeName: K,
         port: Runtime.Port
     ): (
-            setState: SetStoreFunction<TStores[typeof storeName]['state']>,
-            state: TStores[typeof storeName]['state']
-        ) => TStores[typeof storeName]['actions']
+            setState: SetStoreFunction<TStores[K]['state']>,
+            state: TStores[K]['state']
+        ) => ReturnType<TStores[K]['actions']>
     {
         return (
-            setState: SetStoreFunction<TStores[typeof storeName]['state']>,
-            state: TStores[typeof storeName]['state']
-        ) => {
+            setState: SetStoreFunction<TStores[K]['state']>,
+            state: TStores[K]['state']
+        ): ReturnType<TStores[K]['actions']> => {
             const actions = this.stores[storeName].actions(setState, state);
 
             const galacticActions: AnyFunctionsRecord = {};
@@ -262,7 +236,7 @@ class Background<
                     return originalAction(...args);
                 };
             }
-            return galacticActions as TStores[typeof storeName]['actions'];
+            return galacticActions;
         }
     }
 
@@ -303,7 +277,3 @@ const bg = Background.new()
             }
         })
     }).build();
-
-const globalStore = bg.globalStore;
-const sidebarStore = bg.getChannelStore('sidebar');
-const databaseRPC = bg.getChannelRPC('database');
