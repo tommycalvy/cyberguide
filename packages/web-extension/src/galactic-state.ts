@@ -1,3 +1,42 @@
+import { Background } from './background';
+
+const bg = Background.new()
+    .setGlobalStore({ 
+        state: {
+            recording: false,
+        }, 
+        getters: (state) => ({
+            isRecording: () => state.recording,
+        }), 
+        actions: (setState, state) => ({
+            toggleRecording: () => setState('recording', !state.recording)
+        }) 
+    }).setTabStore({ 
+        state: {}, 
+        getters: (state) => ({
+
+        }),
+        actions: (state) => ({ 
+        })
+    }).addChannelStore('sidebar', {
+        state: {
+            recording: false
+        }, 
+        getters: (state) => ({
+            isRecording: () => state.recording
+        }), 
+        actions: (setState, state) => ({
+            toggleRecording: () => setState('recording', !state.recording)
+        }) 
+    }).addChannelRPC('database', {
+        methods: (bg) => ({
+            get: () => {
+                return bg.database;
+            }
+        })
+    }).build();
+
+/*
 import { GalacticStore } from "./galactic-store";
 
 const galacticStore = new GalacticStore({
@@ -56,3 +95,4 @@ export const galacticSidebarStore = galacticStore.createChannelStore('sidebar');
 export const galacticGuideCreatorStore = galacticStore.createChannelStore('guidecreator');
 export type GalacticGuideCreatorStore = ReturnType<typeof galacticGuideCreatorStore>;
 export const galacticBackgroundStore = galacticStore.createBackgroundStore();
+*/

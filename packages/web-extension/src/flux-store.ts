@@ -6,13 +6,7 @@ import { createStore } from "solid-js/store";
  * Type alias for any function with any number of arguments and any return type.
  */
 export type AnyFunction = (...args: any[]) => any;
-export type AnyFunctionsRecord = { [K in string]: AnyFunction };
-
-/**
- * type alias for an object with string keys and `Action` function values
- * @returns a generic set of `Action` functions
- */
-export type Actions<T extends AnyFunctionsRecord> = { readonly [K in keyof T]: T[K] };
+export type AnyFunctionsRecord = Record<string, AnyFunction>;
 
 /**
  * Identify function creating an action - function for mutating the state.
@@ -21,7 +15,7 @@ export type Actions<T extends AnyFunctionsRecord> = { readonly [K in keyof T]: T
  * @returns function of the same signature as `fn` but wrapped in `batch` and `untrack`
  */
 export function createAction<T extends AnyFunction>(fn: T): T {
-  return ((...args) => batch(() => untrack(() => fn(...args)))) as T;
+    return ((...args) => batch(() => untrack(() => fn(...args)))) as T;
 }
 
 /**
@@ -29,15 +23,22 @@ export function createAction<T extends AnyFunction>(fn: T): T {
  * re-renders and returns a new object of the same type
  * @param actions a collection of `Action` functions to wrap
  * @returns a new object of the same type but each function is wrapped with `createAction`
+ export function createActions<T extends AnyFunctionsRecord>(functions: T): Actions<T> {
+     const actions: Record<string, AnyFunction> = { ...functions };
+     for (const [name, fn] of Object.entries(functions)) {
+         actions[name] = createAction(fn);
+     }
+     return actions as any;
+ }
  */
-export function createActions<T extends AnyFunctionsRecord>(functions: T): Actions<T> {
+
+export function createActions<T extends AnyFunctionsRecord>(functions: T): T {
   const actions: Record<string, AnyFunction> = { ...functions };
   for (const [name, fn] of Object.entries(functions)) {
     actions[name] = createAction(fn);
   }
   return actions as any;
 }
-
 /**
  * Solid `Store` enforcing the Flux design pattern which emphasizes a one-way data flow. This typically
  * consists of separate actions that mutate the Store's `state` and `getters` enabling readonly access
@@ -47,13 +48,13 @@ export function createActions<T extends AnyFunctionsRecord>(functions: T): Actio
  * @returns `{ state: T, getters: G, actions: A }`
  */
 export type FluxStore<
-  TState extends object,
-  TActions extends AnyFunctionsRecord,
-  TGetters extends AnyFunctionsRecord = {},
+     TState extends object,
+     TActions extends AnyFunctionsRecord,
+     TGetters extends AnyFunctionsRecord | undefined = undefined,
 > = {
-  state: TState;
-  getters: TGetters;
-  actions: Actions<TActions>;
+     state: TState;
+     getters: TGetters;
+     actions: TActions;
 };
 
 /**
@@ -88,37 +89,39 @@ export type FluxStore<
  * ```
  */
 export function createFluxStore<
-  TState extends object,
-  TActions extends AnyFunctionsRecord,
-  TGetters extends AnyFunctionsRecord,
+     TState extends object,
+     TActions extends AnyFunctionsRecord,
+     TGetters extends AnyFunctionsRecord,
 >(
-  initialState: TState,
-  createMethods: {
-    getters: (state: TState) => TGetters;
-    actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
-  },
+     initialState: TState,
+     createMethods: {
+         getters: (state: TState) => TGetters;
+         actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
+     },
 ): FluxStore<TState, TActions, TGetters>;
+
 export function createFluxStore<TState extends object, TActions extends AnyFunctionsRecord>(
-  initialState: TState,
-  createMethods: {
-    actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
-  },
+     initialState: TState,
+     createMethods: {
+         actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
+     },
 ): FluxStore<TState, TActions>;
+
 export function createFluxStore<
-  TState extends object,
-  TActions extends AnyFunctionsRecord,
-  TGetters extends AnyFunctionsRecord,
+     TState extends object,
+     TActions extends AnyFunctionsRecord,
+     TGetters extends AnyFunctionsRecord,
 >(
-  initialState: TState,
-  createMethods: {
-    getters?: (state: TState) => TGetters;
-    actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
-  },
-): FluxStore<TState, TActions, TGetters | {}> {
-  const [state, setState] = createStore(initialState);
-  return {
-    state,
-    getters: createMethods.getters ? createMethods.getters(state) : {},
-    actions: createActions(createMethods.actions(setState, state)),
-  };
+     initialState: TState,
+     createMethods: {
+         getters?: (state: TState) => TGetters;
+         actions: (setState: SetStoreFunction<TState>, state: TState) => TActions;
+     },
+): FluxStore<TState, TActions, TGetters | undefined> {
+     const [state, setState] = createStore(initialState);
+     return {
+         state,
+         getters: createMethods.getters ? createMethods.getters(state) : undefined,
+         actions: createActions(createMethods.actions(setState, state)),
+     };
 }
