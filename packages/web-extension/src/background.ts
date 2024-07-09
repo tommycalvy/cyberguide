@@ -1,14 +1,20 @@
 import { 
+    type AnyFunction,
     type AnyFunctionsRecord, 
     type FluxStore,
     createFluxStore
 } from "./flux-store";
 import type { SetStoreFunction } from "solid-js/store";
+import { createResource } from 'solid-js';
+import type { ResourceReturn } from 'solid-js';
 import type { Runtime } from 'webextension-polyfill';
 import { BackgroundBuilder } from './bg-builder';
 import type { StoreConfig, RPC, BGOptions } from './bg-builder';
 import { BaseError, Result, errorResult } from './error';
 
+type ResourceGetter<T extends AnyFunction> = (...args: Parameters<T>) => ResourceReturn<ReturnType<T>>;
+
+type RPCMethods<T extends AnyFunctionsRecord> = { [K in keyof T]: ResourceGetter<T[K]> };
 
 type ChannelOptions = {
     tabId?: string;
@@ -31,20 +37,20 @@ interface Port {
 
 export class Background<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TChannelRPCs extends Record<string, RPC<any>>,
+    TRPC extends RPC<any>,
 > {
 
     constructor(
         private storeConfigs: TStores,
-        private channelRPCs: TChannelRPCs,
+        private rpc: TRPC | undefined,
         private options: BGOptions
     ) {}
 
     static new() { 
         return new BackgroundBuilder( 
             {},
-            {},
-            { namespace: 'background', logging: false }
+            undefined,
+            { namespace: 'background', logging: false, dbVersion: 1 }
         );
     }
 
@@ -71,6 +77,8 @@ export class Background<
                     getters: this.storeConfigs[storeName].getters, actions });
             }
 
+            const rpcMethods = this.rpc ? this.createRPCMethods(runtime, this.rpc) : {};
+
             port.onMessage.addListener((message) => {
                 console.log(`Message received on ${portName}`, message);
                 if (message.type === 'action') {
@@ -88,7 +96,12 @@ export class Background<
                 }
             });
 
-            return stores;
+            return { ...stores, ...rpcMethods } as {
+                [K in keyof TStores]: FluxStore<
+                    TStores[K]['state'], 
+                    ReturnType<TStores[K]['actions']>,
+                    ReturnType<TStores[K]['getters']>
+                > } & RPCMethods<ReturnType<TRPC['methods']>>;
         };
     }
 
@@ -120,6 +133,52 @@ export class Background<
             }
             return galacticActions;
         }
+    }
+
+    createRPCMethods<TRPC extends RPC<any>>(runtime: Runtime.Static, rpcMethods: TRPC) {
+            const methods: AnyFunctionsRecord = {};
+
+            const createMethods = (db: IDBDatabase) => {
+                for (const method in rpcMethods.methods({ database: db })) {
+                    console.log('method', method);
+                    methods[method] = (...args: any[]) => {
+                        return createResource(async () => {
+                            const response = await runtime.sendMessage({ type: 'database', method, args });
+                            return response;
+                        });
+                    }
+                }
+            }
+            createMethods({} as IDBDatabase);
+            return methods
+    }
+
+    registerDatabase(callback: (db: IDBDatabase) => void) {
+
+            let db:IDBDatabase;
+            //const db = await openDB<TDB>(this.config.dbName, this.config.dbVersion || 1);
+            const DBOpenRequest = indexedDB.open(
+                this.options.namespace,
+                this.options.dbVersion || 1
+            );
+
+            DBOpenRequest.onerror = (event) => {
+                console.log('Error loading database', event);
+            };
+
+            DBOpenRequest.onsuccess = () => {
+                db = DBOpenRequest.result;
+                console.log('Database loaded', db);
+                callback(db);
+            };
+
+            DBOpenRequest.onupgradeneeded = (event) => {
+                db = DBOpenRequest.result;
+                console.log('Database upgrade needed', db);
+                console.log('event', event);
+                callback(db);
+                //TODO: move data from old version to new version
+            };
     }
 
     createBackgroundStore() {

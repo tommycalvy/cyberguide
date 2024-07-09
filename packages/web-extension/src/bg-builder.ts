@@ -23,17 +23,18 @@ export type StoreConfig<
 export type BGOptions = {
     namespace: string;
     logging: boolean;
+    dbVersion?: number;
 };
 
 // Builder implementation
 export class BackgroundBuilder<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TChannelRPCs extends Record<string, RPC<any>>,
+    TRPC extends RPC<any>,
 > {
 
     constructor(
         private storeConfigs: TStores,
-        private channelRPCs: TChannelRPCs,
+        private rpc: TRPC | undefined,
         private options: BGOptions
     ) {}
 
@@ -45,11 +46,11 @@ export class BackgroundBuilder<
         storeConfig: StoreConfig<TState, TGetters, TActions>
     ): BackgroundBuilder<
         TStores & Record<'global', StoreConfig<TState, TGetters, TActions>>,
-        TChannelRPCs 
+        TRPC 
     > {
         return new BackgroundBuilder(
             { ...this.storeConfigs, ...{ global: storeConfig } },
-            this.channelRPCs,
+            this.rpc,
             this.options
         );
     }
@@ -62,11 +63,11 @@ export class BackgroundBuilder<
         storeConfig: StoreConfig<TState, TGetters, TActions>
     ): BackgroundBuilder<
         TStores & Record<'tab', StoreConfig<TState, TGetters, TActions>>,
-        TChannelRPCs 
+        TRPC 
     > {
         return new BackgroundBuilder(
             { ...this.storeConfigs, ...{ tab: storeConfig } },
-            this.channelRPCs,
+            this.rpc,
             this.options
         );
     } 
@@ -80,51 +81,29 @@ export class BackgroundBuilder<
         name: TName, storeConfig: StoreConfig<TState, TGetters, TActions>
     ): BackgroundBuilder<
         TStores & Record<TName, StoreConfig<TState, TGetters, TActions>>,
-        TChannelRPCs 
+        TRPC 
     > {
         return new BackgroundBuilder(
             { ...this.storeConfigs, ...{ [name]: storeConfig } },
-            this.channelRPCs,
+            this.rpc,
             this.options
         );
     } 
 
-    addChannelRPC<
-        TName extends string,
-        TMethods extends AnyFunctionsRecord
-    >(
-        name: TName, rpc: RPC<TMethods>
-    ): BackgroundBuilder<
-        TStores,
-        TChannelRPCs & Record<TName, RPC<TMethods>>
-    > {
-        return new BackgroundBuilder(
-            this.storeConfigs,
-            { ...this.channelRPCs, ...{ [name]: rpc } },
-            this.options
-        );
+    setRPC<TMethods extends AnyFunctionsRecord>(
+        rpc: RPC<TMethods>
+    ): BackgroundBuilder<TStores, RPC<TMethods>> {
+        return new BackgroundBuilder(this.storeConfigs, rpc, this.options);
     }
 
-    setNamespace(namespace: string): BackgroundBuilder<TStores, TChannelRPCs> {
-        return new BackgroundBuilder(
-            this.storeConfigs,
-            this.channelRPCs,
-            { ...this.options, ...{ namespace } }
-        );
+    setOptions(options: BGOptions): BackgroundBuilder<TStores, TRPC> {
+        return new BackgroundBuilder(this.storeConfigs, this.rpc, options);
     }
 
-    setLogging(logging: boolean): BackgroundBuilder<TStores, TChannelRPCs> {
-        return new BackgroundBuilder(
-            this.storeConfigs,
-            this.channelRPCs,
-            { ...this.options, ...{ logging } }
-        );
-    }
-
-    build(): Background<TStores, TChannelRPCs> {
+    build(): Background<TStores, TRPC> {
         return new Background(
             this.storeConfigs,
-            this.channelRPCs,
+            this.rpc,
             this.options
         );
     }
