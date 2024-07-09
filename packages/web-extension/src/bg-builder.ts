@@ -1,12 +1,13 @@
 import type { AnyFunctionsRecord } from './flux-store';
 import type { SetStoreFunction } from 'solid-js/store';
-import { Background } from './background';
+import { BackgroundManager } from './bg-manager';
 
 type BackgroundMethods = {
-    database: IDBDatabase;
+    db: IDBDatabase;
 }
 
 export type RPC<TMethods extends AnyFunctionsRecord> = {
+    init: (bg: BackgroundMethods) => void;
     methods: (bg: BackgroundMethods) => TMethods;
 };
 
@@ -100,8 +101,8 @@ export class BackgroundBuilder<
         return new BackgroundBuilder(this.storeConfigs, this.rpc, options);
     }
 
-    build(): Background<TStores, TRPC> {
-        return new Background(
+    build(): BackgroundManager<TStores, TRPC> {
+        return new BackgroundManager(
             this.storeConfigs,
             this.rpc,
             this.options

@@ -14,7 +14,7 @@ import { BaseError, Result, errorResult } from './error';
 
 type ResourceGetter<T extends AnyFunction> = (...args: Parameters<T>) => ResourceReturn<ReturnType<T>>;
 
-type RPCMethods<T extends AnyFunctionsRecord> = { [K in keyof T]: ResourceGetter<T[K]> };
+type RPCResources<T extends AnyFunctionsRecord> = { [K in keyof T]: ResourceGetter<T[K]> };
 
 type ChannelOptions = {
     tabId?: string;
@@ -28,6 +28,12 @@ type ActionMessage = {
     args: any[];
 }
 
+interface DBMessage {
+    type: string;
+    method: string;
+    args: any;
+};
+
 interface Port {
     name: string;
     channelName: string;
@@ -35,7 +41,7 @@ interface Port {
     runtimePort: Runtime.Port;
 }
 
-export class Background<
+export class BackgroundManager<
     TStores extends Record<string, StoreConfig<any, any, any>>,
     TRPC extends RPC<any>,
 > {
@@ -58,7 +64,14 @@ export class Background<
 
         const portName = `${this.options.namespace}-${channelName}`;
 
-        return ({ tabId, runtime }: ChannelOptions) => {
+        return ({ tabId, runtime }: ChannelOptions): {
+            stores: { [K in keyof TStores]: FluxStore<
+                TStores[K]['state'], 
+                ReturnType<TStores[K]['actions']>,
+                ReturnType<TStores[K]['getters']>
+            > }; 
+            rpc: RPCResources<ReturnType<TRPC['methods']>>;
+        } => {
 
             const connectId = tabId ? `${portName}#${tabId}` : portName;
             const port = runtime.connect({ name: connectId });
@@ -77,7 +90,9 @@ export class Background<
                     getters: this.storeConfigs[storeName].getters, actions });
             }
 
-            const rpcMethods = this.rpc ? this.createRPCMethods(runtime, this.rpc) : {};
+            const rpcMethods = this.rpc 
+                ? this.createRPCMethods(runtime, this.rpc) 
+                : {} as RPCResources<ReturnType<TRPC['methods']>>;
 
             port.onMessage.addListener((message) => {
                 console.log(`Message received on ${portName}`, message);
@@ -96,12 +111,7 @@ export class Background<
                 }
             });
 
-            return { ...stores, ...rpcMethods } as {
-                [K in keyof TStores]: FluxStore<
-                    TStores[K]['state'], 
-                    ReturnType<TStores[K]['actions']>,
-                    ReturnType<TStores[K]['getters']>
-                > } & RPCMethods<ReturnType<TRPC['methods']>>;
+            return { stores, rpc: rpcMethods };
         };
     }
 
@@ -135,11 +145,11 @@ export class Background<
         }
     }
 
-    createRPCMethods<TRPC extends RPC<any>>(runtime: Runtime.Static, rpcMethods: TRPC) {
+    createRPCMethods<TRPC extends RPC<any>>(runtime: Runtime.Static, rpc: TRPC) {
             const methods: AnyFunctionsRecord = {};
 
             const createMethods = (db: IDBDatabase) => {
-                for (const method in rpcMethods.methods({ database: db })) {
+                for (const method in rpc.methods({ db })) {
                     console.log('method', method);
                     methods[method] = (...args: any[]) => {
                         return createResource(async () => {
@@ -150,7 +160,7 @@ export class Background<
                 }
             }
             createMethods({} as IDBDatabase);
-            return methods
+            return methods as RPCResources<ReturnType<TRPC['methods']>>;
     }
 
     registerDatabase(callback: (db: IDBDatabase) => void) {
@@ -186,6 +196,21 @@ export class Background<
             const ports = new Set<Port>(); 
             const tab_ports = new Map<string, Set<Port>>();
             const channel_ports = new Map<string, Set<Port>>();
+
+            this.registerDatabase((db) => {
+                if (this.rpc) {
+                    this.rpc.init({ db });
+                    runtime.onMessage.addListener(
+                        typedEventListener<DBMessage, any>(( message, _sender, sendResponse) => {
+                        if (this.rpc && message.type === 'database') {
+                            const { method, args } = message as DBMessage;
+                            const rpcMethod = this.rpc.methods({ db })[method];
+                            const response = rpcMethod(db, ...args);
+                            sendResponse(response);
+                        }
+                    }));
+                }
+            });
 
             runtime.onConnect.addListener((runtimePort) => { 
 
@@ -318,3 +343,15 @@ export class Background<
     }
 
 }
+
+function typedEventListener<TMessage, TResponse>(listener: (
+                message: TMessage,
+                sender: Runtime.MessageSender,
+                sendResponse: (message: TResponse) => void,
+            ) => Promise<TResponse> | true | void) {
+    return listener as (
+                message: unknown,
+                sender: Runtime.MessageSender,
+                sendResponse: (message: unknown) => void,
+            ) => Promise<unknown> | true | void;
+};
