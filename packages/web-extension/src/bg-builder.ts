@@ -6,9 +6,16 @@ type BackgroundMethods = {
     db: IDBDatabase;
 }
 
-export type RPC<TMethods extends AnyFunctionsRecord> = {
+type RPCMethod = (
+    callback: (response: any) => void,
+    ...args: any[]
+) => void;
+
+type RPCMethodRecord = Record<string, RPCMethod>;
+
+export type RPC = {
     init: (bg: BackgroundMethods) => void;
-    methods: (bg: BackgroundMethods) => TMethods;
+    methods: (bg: BackgroundMethods) => RPCMethodRecord;
 };
 
 export type StoreConfig<
@@ -30,7 +37,7 @@ export type BGOptions = {
 // Builder implementation
 export class BackgroundBuilder<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TRPC extends RPC<any>,
+    TRPC extends RPC,
 > {
 
     constructor(
@@ -91,9 +98,9 @@ export class BackgroundBuilder<
         );
     } 
 
-    setRPC<TMethods extends AnyFunctionsRecord>(
-        rpc: RPC<TMethods>
-    ): BackgroundBuilder<TStores, RPC<TMethods>> {
+    setRPC<TRPC extends RPC>(
+        rpc: TRPC
+    ): BackgroundBuilder<TStores, TRPC> {
         return new BackgroundBuilder(this.storeConfigs, rpc, this.options);
     }
 

@@ -12,9 +12,14 @@ import { BackgroundBuilder } from './bg-builder';
 import type { StoreConfig, RPC, BGOptions } from './bg-builder';
 import { BaseError, Result, errorResult } from './error';
 
-type ResourceGetter<T extends AnyFunction> = (...args: Parameters<T>) => ResourceReturn<ReturnType<T>>;
+type OmitFirstArg<F> = F extends (x: any, ...args: infer P) => infer R ? (...args: P) => R : never;
 
-type RPCResources<T extends AnyFunctionsRecord> = { [K in keyof T]: ResourceGetter<T[K]> };
+type ResourceGetter<T extends AnyFunction> = 
+    (...args: Parameters<T>) => ResourceReturn<ReturnType<T>>;
+
+type RPCResources<T extends AnyFunctionsRecord> = { 
+    [K in keyof T]: ResourceGetter<OmitFirstArg<T[K]>> 
+};
 
 type ChannelOptions = {
     tabId?: string;
@@ -43,7 +48,7 @@ interface Port {
 
 export class BackgroundManager<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TRPC extends RPC<any>,
+    TRPC extends RPC,
 > {
 
     constructor(
@@ -145,7 +150,7 @@ export class BackgroundManager<
         }
     }
 
-    createRPCMethods<TRPC extends RPC<any>>(runtime: Runtime.Static, rpc: TRPC) {
+    createRPCMethods<TRPC extends RPC>(runtime: Runtime.Static, rpc: TRPC) {
             const methods: AnyFunctionsRecord = {};
 
             const createMethods = (db: IDBDatabase) => {
@@ -192,7 +197,7 @@ export class BackgroundManager<
     }
 
     createBackgroundStore() {
-        return async (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
+        return (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
             const ports = new Set<Port>(); 
             const tab_ports = new Map<string, Set<Port>>();
             const channel_ports = new Map<string, Set<Port>>();
@@ -205,8 +210,9 @@ export class BackgroundManager<
                         if (this.rpc && message.type === 'database') {
                             const { method, args } = message as DBMessage;
                             const rpcMethod = this.rpc.methods({ db })[method];
-                            const response = rpcMethod(db, ...args);
-                            sendResponse(response);
+                            rpcMethod((response) => {
+                                sendResponse(response);
+                            }, args);
                         }
                     }));
                 }

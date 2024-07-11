@@ -10,6 +10,11 @@ interface Step {
 };
 
 const bg = BackgroundManager.new()
+    .setOptions({
+        namespace: 'cyberguide',
+        logging: true,
+        dbVersion: 1,
+    })
     .setTabStore({
         state: { 
             recording: false 
@@ -31,7 +36,7 @@ const bg = BackgroundManager.new()
             }
         },
         methods: ({ db }) => ({
-            getAllSteps: (guideName: string, callback: (steps: Step[]) => void) => {
+            getAllSteps: (callback: (steps: Step[]) => void, guideName: string) => {
                 const transaction = db.transaction('guides', 'readonly');
                 const store = transaction.objectStore('guides');
                 const index = store.index('guideName');
@@ -40,33 +45,32 @@ const bg = BackgroundManager.new()
                     callback(steps.result);
                 }
             },
-            addStep: async (step: Step, errorCallback: (error: Error) => void) => {
+            addStep: (callback: (error: Error) => void, step: Step) => {
                 const transaction = db.transaction('guides', 'readwrite');
                 const store = transaction.objectStore('guides');
                 const result = store.add(step);
                 result.onerror = (event) => {
                     console.error(event);
                     const err = new BaseError('Error adding step');
-                    errorCallback(err);
+                    callback(err);
                 }
             },
-            getAllGuides: (callback) => {
+            getListOfGuides: (callback: (guideNames: string[]) => void) => {
                 const transaction = db.transaction('guides', 'readonly');
                 const store = transaction.objectStore('guides');
                 const index = store.index('guideName');
-                const cursorRequest = index.openCursor();
-                const uniqueGuides = new Set();
+                const cursorRequest = index.openCursor(null, 'prev');
+                const uniqueGuides: string[] = [];
 
-                cursorRequest.onsuccess = event => {
-                    const cursor = event.target.result;
+                cursorRequest.onsuccess = (event) => {
+                    const cursor = (event.target as IDBRequest<IDBCursor & { value: Step }>).result;
                     if (cursor) {
-                        // Add the guide name to the set if not already present
-                        uniqueGuides.add(cursor.key);
-                        // Move to the next unique guide name
-                        cursor.continue();
+                        const step = cursor.value;
+                        uniqueGuides.push(step.guideName);
+                        cursor.advance(step.stepNumber);
                     } else {
                         // When cursor is null, we've traversed all records
-                        callback(Array.from(uniqueGuides));
+                        callback(uniqueGuides);
                     }
                 };
                 cursorRequest.onerror = event => {
@@ -74,11 +78,8 @@ const bg = BackgroundManager.new()
                 };
             },
         })
-    }).setOptions({
-        namespace: 'cyberguide',
-        logging: true,
-        dbVersion: 1,
     }).build();
 
-
-    
+export const registerBackground = bg.createBackgroundStore();
+export const sidepanelMethods = bg.createChannelMethods('sidepanel');
+export const guidecreatorMethods = bg.createChannelMethods('guidecreator');

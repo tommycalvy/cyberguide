@@ -1,4 +1,4 @@
-import { galacticSidebarStore } from '@cyberguide/web-extension';
+import { sidepanelMethods } from '@cyberguide/web-extension';
 import { Show } from 'solid-js';
 
 function App() {
@@ -7,14 +7,16 @@ function App() {
     if (!tabId) throw new Error('tabId not found');
 
     const { 
-        tab: { 
-            state: { recording },
-            actions: { startRecording, stopRecording }
+        stores: {
+            tab: { 
+                state: { recording },
+                actions: { startRecording, stopRecording }
+            },
         },
-        dbMethods: { getters: { getAllSteps }}, 
-    } = galacticSidebarStore({ tabId, runtime: browser.runtime });
+        rpc: { getListOfGuides },
+    } = sidepanelMethods({ tabId, runtime: browser.runtime });
 
-    const [steps, { refetch }] = getAllSteps();
+    const [steps, { refetch }] = getListOfGuides();
     console.log(steps());
     const printSteps = async () => {
         refetch();

@@ -7,7 +7,7 @@ type JsonableObject = { readonly [key: string]: Jsonable };
 
 type JsonableToJSON = { toJSON(): Jsonable };
 
-type Jsonable = Primative | JsonableArray | JsonableObject | JsonableToJSON;
+export type Jsonable = Primative | JsonableArray | JsonableObject | JsonableToJSON;
 
 export class BaseError extends Error {
 

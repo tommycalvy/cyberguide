@@ -1,6 +1,6 @@
 import { MessageName } from './utils';
 import type { Runtime } from 'webextension-polyfill';
-import { galacticGuideCreatorStore, GalacticGuideCreatorStore } from './galactic-state';
+import { guidecreatorMethods } from './bg-config';
 import { createEffect } from 'solid-js';
 import { EventType, eventWithTime, IncrementalSource, MouseInteractions } from 'rrweb';
 
@@ -13,17 +13,17 @@ export class RecordingManager {
 
     private runtime: Runtime.Static;
     private recordScriptUrl: string;
-    private store: GalacticGuideCreatorStore;
+    private gc: ReturnType<typeof guidecreatorMethods>;
     private newEvents: eventWithTime[] = [];
 
     constructor(runtime: Runtime.Static, recordScriptUrl: string) {
         this.runtime = runtime;
         this.recordScriptUrl = recordScriptUrl;
-        this.store = galacticGuideCreatorStore({ runtime });
-        console.log("this.store", this.store);
+        this.gc = guidecreatorMethods({ runtime });
+        console.log("this.store", this.gc);
         window.addEventListener('message', this.messageHandler());
         createEffect(async () => {
-            if (this.store.tab.state.recording) {
+            if (this.gc.stores.tab.state.recording) {
                 this.startRecording();
                 this.newEvents = [];
                 console.log('Start recording message received');
