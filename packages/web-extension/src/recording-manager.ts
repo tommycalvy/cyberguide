@@ -1,7 +1,7 @@
 import { MessageName } from './utils';
 import type { Runtime } from 'webextension-polyfill';
-import { guidecreatorMethods } from './bg-config';
-import { createEffect } from 'solid-js';
+import { guidecreatorMethods, type Step } from './bg-config';
+import { createEffect, createSignal } from 'solid-js';
 import { EventType, eventWithTime, IncrementalSource, MouseInteractions } from 'rrweb';
 
 type EmitEventMessage = {
@@ -9,34 +9,32 @@ type EmitEventMessage = {
     event: eventWithTime;
 };
 
-export class RecordingManager {
+export function recordingManager(runtime: Runtime.Static, recordScriptUrl: string) {
+    let newEvents: eventWithTime[] = [];
+    const [clickDetected, setClickDetected] = createSignal(-1);
+    const [touchStartDetected, setTouchStartDetected] = createSignal(-1);
 
-    private runtime: Runtime.Static;
-    private recordScriptUrl: string;
-    private gc: ReturnType<typeof guidecreatorMethods>;
-    private newEvents: eventWithTime[] = [];
+    const {
+        stores: { 
+            tab: { 
+                state: { 
+                    recording,
+                    guideName,
+                    stepNumber,
+                    stepTitles,
+                },
+                actions: {
+                    incrementStepNumber,
+                    setGuideName,
+                },
+            },
+        },
+        rpc: { addStepToDB },
+    } = guidecreatorMethods({ runtime });
 
-    constructor(runtime: Runtime.Static, recordScriptUrl: string) {
-        this.runtime = runtime;
-        this.recordScriptUrl = recordScriptUrl;
-        this.gc = guidecreatorMethods({ runtime });
-        console.log("this.store", this.gc);
-        window.addEventListener('message', this.messageHandler());
-        createEffect(async () => {
-            if (this.gc.stores.tab.state.recording) {
-                this.startRecording();
-                this.newEvents = [];
-                console.log('Start recording message received');
-            } else {
-                window.postMessage({ message: MessageName.StopRecord });
-                console.log('Stop recording message received');
-            }
-        });
-    }
-
-    private startRecording() {
+    const startRecording = () => {
         const scriptEl = document.createElement('script');
-        scriptEl.src = this.runtime.getURL(this.recordScriptUrl);
+        scriptEl.src = runtime.getURL(recordScriptUrl);
         console.log('scriptEl.src', scriptEl.src);
         document.documentElement.appendChild(scriptEl);
         scriptEl.onload = () => {
@@ -44,7 +42,8 @@ export class RecordingManager {
         };
     }
 
-    private messageHandler() {
+
+    const messageHandler = () => {
         return (event: MessageEvent<{ message: string }>) => {
             if (event.source !== window) return;
             const data = event.data;
@@ -64,50 +63,42 @@ export class RecordingManager {
                 },
                 [MessageName.EmitEvent]: (event) => {
                     console.log('Event emitted');
-                    this.newEvents.push((event.data as EmitEventMessage).event);
-                },
-                [MessageName.StepDetected]: () => {
-                    this.saveNewStep();
+                    newEvents.push((event.data as EmitEventMessage).event);
+                    const stepDesc = detectStep(event.data.event);
+                    if (stepDesc) {
+                        saveStepToDB({
+                            guideName,
+                            stepName: stepDesc,
+                            stepNumber, 
+                            events: newEvents,
+                        });
+                    }
                 },
             };
             if (eventHandler[data.message]) eventHandler[data.message](event);
         }
-    };
+    }
 
-    private detectStep(event: eventWithTime) {
-        if (event.type === EventType.IncrementalSnapshot) {
-            if (event.data.source === IncrementalSource.MouseInteraction) {
-                if (event.data.type === MouseInteractions.Click ||
-                    event.data.type === MouseInteractions.MouseUp ||
-                    event.data.type === MouseInteractions.DblClick ||
-                    event.data.type === MouseInteractions.TouchEnd) {
-                }
-            }
+    window.addEventListener('message', messageHandler());
+    createEffect(() => {
+        if (recording) {
+            startRecording();
+            newEvents = [];
+            console.log('Start recording message received');
+        } else {
+            window.postMessage({ message: MessageName.StopRecord });
+            console.log('Stop recording message received');
         }
-    }
+    });
+}
 
-    private async saveNewStep() {
-        await this.store.dbMethods.setters.addStep({ events: this.newEvents });
-        this.newEvents = [];
-    }
 
-    private commandHandler() {
-        return (message: string) => {
-            const eventHandler: Record<string, () => void> = {
-                [MessageName.StartRecord]: () => {
-                    this.startRecording();
-                    this.newEvents = [];
-                },
-                [MessageName.StopRecord]: () => {
-                    window.postMessage({ message: MessageName.StopRecord });
-                    this.store.dbMethods.setters.addStep({ events: this.newEvents })
-                    this.newEvents = [];
-                },
-                [MessageName.PauseRecord]: () => {
-                    window.postMessage({ message: MessageName.StopRecord });
-                },
-            };
-            if (eventHandler[message]) eventHandler[message]();
+function detectStep(event: eventWithTime) {
+    if (event.type === EventType.IncrementalSnapshot) {
+        if (event.data.source === IncrementalSource.MouseInteraction) {
+            if (event.data.type === MouseInteractions.Click) {
+                return 'Click Element';
+            }
         }
     }
 }

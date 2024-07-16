@@ -1,13 +1,14 @@
 import { BackgroundManager } from './bg-manager';
 import type { eventWithTime } from 'rrweb';
-import { BaseError } from './error';
 
-interface Step {
+export interface Step {
     guideName: string;
     stepNumber: number;
     stepName: string;
     events: eventWithTime[];
 };
+
+type StepKey = [string, number];
 
 const bg = BackgroundManager.new()
     .setOptions({
@@ -17,16 +18,38 @@ const bg = BackgroundManager.new()
     })
     .setTabStore({
         state: { 
-            recording: false 
+            recording: false,
+            guideName: 'fire-breathing-llama',
+            stepNumber: 0,
+            stepTitles: ['Untitled Step 1'],
         },
         getters: (state) => ({ 
-            isRecording: () => state.recording 
+            isRecording: () => state.recording,
+            getGuideName: () => state.guideName,
+            getStepTitle: () => state.stepNumber,
         }),
-        actions: (setState, _) => ({
+        actions: (setState, state) => ({
             startRecording: () => setState('recording', true),
-            stopRecording: () => setState('recording', false) 
+            stopRecording: () => setState('recording', false),
+            setGuideName: (guideName: string) => setState('guideName', guideName),
+            incrementStepNumber: () => setState('stepNumber', state.stepNumber + 1),
+            resetStepNumber: () => setState('stepNumber', 0),
+            addStepTitle: (stepTitle: string) => setState('stepTitles', [...state.stepTitles, stepTitle]),
+            resetStepTitles: () => setState('stepTitles', []),
         })
     }).setRPC({
+        dbSchema: {
+            guides: {
+                key: ['fire-breathing-llama', 0] as StepKey,
+                value: {
+                    guideName: 'fire-breathing-llama',
+                    stepNumber: 0,
+                    stepName: 'Untitled Step 1',
+                    events: [],
+                } as Step,
+                indexes: { guideName: 'guideName' },
+            },
+        },
         init: ({ db }) => {
             if (!db.objectStoreNames.contains('guides')) {
                 const guideStore = db.createObjectStore('guides', { 
@@ -36,7 +59,9 @@ const bg = BackgroundManager.new()
             }
         },
         methods: ({ db }) => ({
-            getAllSteps: (callback: (steps: Step[]) => void, guideName: string) => {
+            getGuideFromDB: (guideName: string): Promise<Step[]> => {
+                return db.getAllFromIndex('guides', 'guideName', guideName);
+                /*
                 const transaction = db.transaction('guides', 'readonly');
                 const store = transaction.objectStore('guides');
                 const index = store.index('guideName');
@@ -44,8 +69,11 @@ const bg = BackgroundManager.new()
                 steps.onsuccess = () => {
                     callback(steps.result);
                 }
+                */
             },
-            addStep: (callback: (error: Error) => void, step: Step) => {
+            addStepToDB: (step: Step): Promise<StepKey> => {
+                return db.add('guides', step);
+                /*
                 const transaction = db.transaction('guides', 'readwrite');
                 const store = transaction.objectStore('guides');
                 const result = store.add(step);
@@ -54,8 +82,22 @@ const bg = BackgroundManager.new()
                     const err = new BaseError('Error adding step');
                     callback(err);
                 }
+                */
             },
-            getListOfGuides: (callback: (guideNames: string[]) => void) => {
+            getListOfGuides: (): Promise<string[]> => {
+                return new Promise(async (resolve, _reject) => {
+                    const tx = db.transaction('guides', 'readonly');
+                    const index = tx.objectStore('guides').index('guideName');
+                    let cursor = await index.openCursor(null, 'prev');
+                    const guides: string[] = [];
+                    while (cursor) {
+                        const step = cursor.value;
+                        guides.push(step.guideName);
+                        cursor = await cursor.advance(step.stepNumber);
+                    }
+                    resolve(guides);
+                });
+                /*
                 const transaction = db.transaction('guides', 'readonly');
                 const store = transaction.objectStore('guides');
                 const index = store.index('guideName');
@@ -76,6 +118,7 @@ const bg = BackgroundManager.new()
                 cursorRequest.onerror = event => {
                     console.error('Cursor request failed', event);
                 };
+                */
             },
         })
     }).build();

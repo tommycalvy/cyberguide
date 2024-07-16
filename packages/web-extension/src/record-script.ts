@@ -22,13 +22,6 @@ function startRecord(config: recordOptions<eventWithTime>) {
             events.push(event);
             postMessage({ message: MessageName.EmitEvent, event });
         },
-        hooks: {
-            mouseInteraction: ({ type }) => {
-                if (type === MouseInteractions.Click) {
-                    postMessage({ message: MessageName.StepDetected });
-                }
-            },
-        },
         ...config,
     }) || null;
     postMessage({

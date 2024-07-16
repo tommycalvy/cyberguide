@@ -1,25 +1,11 @@
-import { 
-    type AnyFunction,
-    type AnyFunctionsRecord, 
-    type FluxStore,
-    createFluxStore
-} from "./flux-store";
+import { createFluxStore } from "./flux-store";
+import type { AnyFunctionsRecord, FluxStore } from "./flux-store";
 import type { SetStoreFunction } from "solid-js/store";
-import { createResource } from 'solid-js';
-import type { ResourceReturn } from 'solid-js';
 import type { Runtime } from 'webextension-polyfill';
 import { BackgroundBuilder } from './bg-builder';
-import type { StoreConfig, RPC, BGOptions } from './bg-builder';
+import type { StoreConfig, RPC, BGOptions, AnyAsyncRecord, AnyAsyncFunction } from './bg-builder';
 import { BaseError, Result, errorResult } from './error';
-
-type OmitFirstArg<F> = F extends (x: any, ...args: infer P) => infer R ? (...args: P) => R : never;
-
-type ResourceGetter<T extends AnyFunction> = 
-    (...args: Parameters<T>) => ResourceReturn<ReturnType<T>>;
-
-type RPCResources<T extends AnyFunctionsRecord> = { 
-    [K in keyof T]: ResourceGetter<OmitFirstArg<T[K]>> 
-};
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 type ChannelOptions = {
     tabId?: string;
@@ -34,9 +20,9 @@ type ActionMessage = {
 }
 
 interface DBMessage {
-    type: string;
+    type: 'database';
     method: string;
-    args: any;
+    args: any[];
 };
 
 interface Port {
@@ -48,19 +34,20 @@ interface Port {
 
 export class BackgroundManager<
     TStores extends Record<string, StoreConfig<any, any, any>>,
-    TRPC extends RPC,
+    TMethods extends AnyAsyncRecord,
+    TDB extends DBSchema,
 > {
 
     constructor(
         private storeConfigs: TStores,
-        private rpc: TRPC | undefined,
+        private rpc: RPC<TDB, TMethods>,
         private options: BGOptions
     ) {}
 
     static new() { 
         return new BackgroundBuilder( 
             {},
-            undefined,
+            { dbSchema: {}, init: () => {}, methods: () => ({}) },
             { namespace: 'background', logging: false, dbVersion: 1 }
         );
     }
@@ -75,7 +62,7 @@ export class BackgroundManager<
                 ReturnType<TStores[K]['actions']>,
                 ReturnType<TStores[K]['getters']>
             > }; 
-            rpc: RPCResources<ReturnType<TRPC['methods']>>;
+            rpc: TMethods;
         } => {
 
             const connectId = tabId ? `${portName}#${tabId}` : portName;
@@ -95,9 +82,7 @@ export class BackgroundManager<
                     getters: this.storeConfigs[storeName].getters, actions });
             }
 
-            const rpcMethods = this.rpc 
-                ? this.createRPCMethods(runtime, this.rpc) 
-                : {} as RPCResources<ReturnType<TRPC['methods']>>;
+            const rpcMethods = this.createRPCMethods(runtime); 
 
             port.onMessage.addListener((message) => {
                 console.log(`Message received on ${portName}`, message);
@@ -124,7 +109,7 @@ export class BackgroundManager<
         TState extends object,
         TGetters extends AnyFunctionsRecord,
         TActions extends AnyFunctionsRecord,
-        K extends keyof TStores
+        K extends Extract<keyof TStores, string>
     >(
         store: StoreConfig<TState, TGetters, TActions>,
         storeName: K,
@@ -141,7 +126,8 @@ export class BackgroundManager<
 
                 (galacticActions[actionName] as any) = (galactic: boolean = true, ...args: any[]) => {
                     if (galactic) {
-                        port.postMessage({ type: 'action', storeName, actionName, args } as ActionMessage);
+                        const message: ActionMessage = { type: 'action', storeName, actionName, args };
+                        port.postMessage(message);
                     }
                     return originalAction(...args);
                 };
@@ -150,73 +136,50 @@ export class BackgroundManager<
         }
     }
 
-    createRPCMethods<TRPC extends RPC>(runtime: Runtime.Static, rpc: TRPC) {
-            const methods: AnyFunctionsRecord = {};
+    createRPCMethods(runtime: Runtime.Static): TMethods {
+            const methods: TMethods = {} as TMethods;
 
-            const createMethods = (db: IDBDatabase) => {
-                for (const method in rpc.methods({ db })) {
+            const createMethods = (db: IDBPDatabase<TDB>) => {
+                for (const method in this.rpc.methods({ db })) {
                     console.log('method', method);
-                    methods[method] = (...args: any[]) => {
-                        return createResource(async () => {
-                            const response = await runtime.sendMessage({ type: 'database', method, args });
-                            return response;
-                        });
+                    (methods[method] as any) = (...args: any[]) => {
+                        const message: DBMessage = { type: 'database', method, args };
+                        return runtime.sendMessage(message);
                     }
                 }
             }
-            createMethods({} as IDBDatabase);
-            return methods as RPCResources<ReturnType<TRPC['methods']>>;
+            createMethods({} as IDBPDatabase<TDB>);
+            return methods;
     }
 
-    registerDatabase(callback: (db: IDBDatabase) => void) {
+    async registerDatabase(): Promise<IDBPDatabase<TDB>> {  
 
-            let db:IDBDatabase;
-            //const db = await openDB<TDB>(this.config.dbName, this.config.dbVersion || 1);
-            const DBOpenRequest = indexedDB.open(
-                this.options.namespace,
-                this.options.dbVersion || 1
-            );
-
-            DBOpenRequest.onerror = (event) => {
-                console.log('Error loading database', event);
-            };
-
-            DBOpenRequest.onsuccess = () => {
-                db = DBOpenRequest.result;
-                console.log('Database loaded', db);
-                callback(db);
-            };
-
-            DBOpenRequest.onupgradeneeded = (event) => {
-                db = DBOpenRequest.result;
-                console.log('Database upgrade needed', db);
-                console.log('event', event);
-                callback(db);
-                //TODO: move data from old version to new version
-            };
+        const rpc = this.rpc; 
+        const db = await openDB<TDB>(this.options.namespace, this.options.dbVersion || 1, {
+            upgrade(db) {
+                if (rpc) rpc.init({ db });
+            },
+        });
+        return db;
     }
 
     createBackgroundStore() {
-        return (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
+        return async (runtime: Runtime.Static, errorCallback: (err: BaseError) => void) => { 
             const ports = new Set<Port>(); 
             const tab_ports = new Map<string, Set<Port>>();
             const channel_ports = new Map<string, Set<Port>>();
 
-            this.registerDatabase((db) => {
-                if (this.rpc) {
-                    this.rpc.init({ db });
-                    runtime.onMessage.addListener(
-                        typedEventListener<DBMessage, any>(( message, _sender, sendResponse) => {
-                        if (this.rpc && message.type === 'database') {
-                            const { method, args } = message as DBMessage;
-                            const rpcMethod = this.rpc.methods({ db })[method];
-                            rpcMethod((response) => {
-                                sendResponse(response);
-                            }, args);
-                        }
-                    }));
+            const db = await this.registerDatabase();
+
+            runtime.onMessage.addListener(
+                typedEventListener<DBMessage, any>(async ( message, _sender, sendResponse) => {
+                if (this.rpc && message.type === 'database') {
+                    const { method, args } = message;
+                    const rpcMethod = this.rpc.methods({ db })[method] as AnyAsyncFunction;
+                    const response = await rpcMethod(args);
+                    sendResponse(response);
                 }
-            });
+            }));
 
             runtime.onConnect.addListener((runtimePort) => { 
 

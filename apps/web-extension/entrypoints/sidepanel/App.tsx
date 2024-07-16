@@ -1,10 +1,12 @@
 import { sidepanelMethods } from '@cyberguide/web-extension';
-import { Show } from 'solid-js';
+import { Show, For, createSignal } from 'solid-js';
 
 function App() {
 
     const tabId = location.search.split('tabId=')[1];
     if (!tabId) throw new Error('tabId not found');
+
+    const [guideNames, setGuideNames] = createSignal<string[]>([]);
 
     const { 
         stores: {
@@ -16,11 +18,9 @@ function App() {
         rpc: { getListOfGuides },
     } = sidepanelMethods({ tabId, runtime: browser.runtime });
 
-    const [steps, { refetch }] = getListOfGuides();
-    console.log(steps());
     const printSteps = async () => {
-        refetch();
-        console.log(steps());
+        setGuideNames(await getListOfGuides());
+        console.log(guideNames);
     };
 
     return (
@@ -39,6 +39,9 @@ function App() {
                     Refresh Steps
                 </button>
             </div>
+            <For each={guideNames()}> 
+                {(guideName) => <h2>{guideName}</h2>}
+            </For>
         </>
     );
 }
