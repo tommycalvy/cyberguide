@@ -1,4 +1,4 @@
-export { RecordingManager } from './recording-manager';
+export { recordingManager } from './recording-manager';
 export { initRecordScript } from './record-script';
 export {
     registerBackground,

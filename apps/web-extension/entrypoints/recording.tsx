@@ -1,7 +1,10 @@
-import { RecordingManager } from '@cyberguide/web-extension';
+import { recordingManager } from '@cyberguide/web-extension';
+import { createRoot } from 'solid-js';
 export default defineUnlistedScript({
     main() {
         console.log('Hello guide creator!', { id: browser.runtime.id });
-        new RecordingManager(browser.runtime, "inject.js");
+        createRoot(() => {
+            recordingManager(browser.runtime, "inject.js");
+        });
     },
 });

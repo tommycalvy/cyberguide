@@ -1,11 +1,10 @@
-import { createFluxStore } from "./flux-store";
-import type { AnyFunctionsRecord, FluxStore } from "./flux-store";
+import { createFluxStore, type FluxStore } from "@solid-primitives/flux-store";
 import type { SetStoreFunction } from "solid-js/store";
 import type { Runtime } from 'webextension-polyfill';
 import { BackgroundBuilder } from './bg-builder';
 import type { StoreConfig, RPC, BGOptions, AnyAsyncRecord, AnyAsyncFunction } from './bg-builder';
 import { BaseError, Result, errorResult } from './error';
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 type ChannelOptions = {
     tabId?: string;
@@ -38,11 +37,15 @@ export class BackgroundManager<
     TDB extends DBSchema,
 > {
 
+    private notGalactic: symbol;
+
     constructor(
         private storeConfigs: TStores,
         private rpc: RPC<TDB, TMethods>,
         private options: BGOptions
-    ) {}
+    ) {
+        this.notGalactic = Symbol('Galactic');
+    }
 
     static new() { 
         return new BackgroundBuilder( 
@@ -56,14 +59,12 @@ export class BackgroundManager<
 
         const portName = `${this.options.namespace}-${channelName}`;
 
-        return ({ tabId, runtime }: ChannelOptions): {
-            stores: { [K in keyof TStores]: FluxStore<
+        return ({ tabId, runtime }: ChannelOptions): { 
+             [K in keyof TStores]: FluxStore<
                 TStores[K]['state'], 
                 ReturnType<TStores[K]['actions']>,
                 ReturnType<TStores[K]['getters']>
-            > }; 
-            rpc: TMethods;
-        } => {
+            > } & { rpc: TMethods } => {
 
             const connectId = tabId ? `${portName}#${tabId}` : portName;
             const port = runtime.connect({ name: connectId });
@@ -76,10 +77,7 @@ export class BackgroundManager<
                 > } = {} as any;
 
             for (const storeName in this.storeConfigs) {
-                const storeConfig = this.storeConfigs[storeName];
-                const actions = this.createActions(storeConfig, storeName, port);
-                stores[storeName] = createFluxStore(this.storeConfigs[storeName].state, {
-                    getters: this.storeConfigs[storeName].getters, actions });
+                stores[storeName] = this.createGalacticStore(storeName, port);
             }
 
             const rpcMethods = this.createRPCMethods(runtime); 
@@ -91,7 +89,7 @@ export class BackgroundManager<
                     console.log(`Method ${actionName} called with args`, args);
                     if (storeName in stores) {
                         if (actionName in stores[storeName].actions) {
-                            stores[storeName].actions[actionName](false, ...args);
+                            stores[storeName].actions[actionName](...args, this.notGalactic);
                         } else {
                             console.error(`Action ${actionName} not found in store ${storeName}`);
                         }
@@ -101,39 +99,50 @@ export class BackgroundManager<
                 }
             });
 
-            return { stores, rpc: rpcMethods };
+            return { ...stores, rpc: rpcMethods };
         };
     }
 
-    createActions<
-        TState extends object,
-        TGetters extends AnyFunctionsRecord,
-        TActions extends AnyFunctionsRecord,
+    createGalacticStore<
         K extends Extract<keyof TStores, string>
     >(
-        store: StoreConfig<TState, TGetters, TActions>,
         storeName: K,
         port: Runtime.Port
-    ): (setState: SetStoreFunction<TState>, state: TState) => TActions {
+    ): FluxStore<
+        TStores[K]['state'],
+        ReturnType<TStores[K]['actions']>,
+        ReturnType<TStores[K]['getters']> 
+    > {
+        const galacticActions = (
+            setState: SetStoreFunction<TStores[K]['state']>,
+            state: TStores[K]['state']
+        ): ReturnType<TStores[K]['actions']> => {
+            const actions = this.storeConfigs[storeName].actions(setState, state);
 
-        return (setState, state) => {
-            const actions = store.actions(setState, state);
-
-            const galacticActions: TActions = {} as TActions;
+            const modifiedActions: ReturnType<TStores[K]['actions']> = {} as 
+                ReturnType<TStores[K]['actions']>;
 
             for (const actionName in actions) {
                 const originalAction = actions[actionName];
 
-                (galacticActions[actionName] as any) = (galactic: boolean = true, ...args: any[]) => {
+                modifiedActions[actionName] = (...args: any[]) => {
+                    const galactic = args[args.length - 1] !== this.notGalactic;
                     if (galactic) {
                         const message: ActionMessage = { type: 'action', storeName, actionName, args };
                         port.postMessage(message);
+                    } else {
+                        args.pop();
                     }
                     return originalAction(...args);
                 };
+                if (actionName === 'addStepTitle') console.log('addStepTitle:', modifiedActions[actionName]);
             }
-            return galacticActions;
+            return modifiedActions;
         }
+        return createFluxStore(this.storeConfigs[storeName].state, {
+            getters: this.storeConfigs[storeName].getters,
+            actions: galacticActions,
+        });
     }
 
     createRPCMethods(runtime: Runtime.Static): TMethods {
@@ -155,9 +164,10 @@ export class BackgroundManager<
     async registerDatabase(): Promise<IDBPDatabase<TDB>> {  
 
         const rpc = this.rpc; 
+        await deleteDB(this.options.namespace);
         const db = await openDB<TDB>(this.options.namespace, this.options.dbVersion || 1, {
             upgrade(db) {
-                if (rpc) rpc.init({ db });
+                if (rpc.init) rpc.init({ db });
             },
         });
         return db;
@@ -176,7 +186,7 @@ export class BackgroundManager<
                 if (this.rpc && message.type === 'database') {
                     const { method, args } = message;
                     const rpcMethod = this.rpc.methods({ db })[method] as AnyAsyncFunction;
-                    const response = await rpcMethod(args);
+                    const response = await rpcMethod(...args);
                     sendResponse(response);
                 }
             }));

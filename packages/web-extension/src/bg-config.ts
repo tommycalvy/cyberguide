@@ -8,8 +8,6 @@ export interface Step {
     events: eventWithTime[];
 };
 
-type StepKey = [string, number];
-
 const bg = BackgroundManager.new()
     .setOptions({
         namespace: 'cyberguide',
@@ -20,30 +18,34 @@ const bg = BackgroundManager.new()
         state: { 
             recording: false,
             guideName: 'fire-breathing-llama',
-            stepNumber: 0,
-            stepTitles: ['Untitled Step 1'],
+            stepNumber: 1,
+            stepTitles: [] as string[],
         },
         getters: (state) => ({ 
             isRecording: () => state.recording,
             getGuideName: () => state.guideName,
-            getStepTitle: () => state.stepNumber,
+            getStepNumber: () => state.stepNumber,
+            getStepTitles: () => state.stepTitles,
         }),
         actions: (setState, state) => ({
             startRecording: () => setState('recording', true),
             stopRecording: () => setState('recording', false),
             setGuideName: (guideName: string) => setState('guideName', guideName),
             incrementStepNumber: () => setState('stepNumber', state.stepNumber + 1),
-            resetStepNumber: () => setState('stepNumber', 0),
-            addStepTitle: (stepTitle: string) => setState('stepTitles', [...state.stepTitles, stepTitle]),
+            resetStepNumber: () => setState('stepNumber', 1),
+            addStepTitle: (stepTitle: string) => {
+                setState('stepTitles', [...state.stepTitles, stepTitle])
+                console.log('step added', stepTitle);
+            },
             resetStepTitles: () => setState('stepTitles', []),
         })
     }).setRPC({
         dbSchema: {
             guides: {
-                key: ['fire-breathing-llama', 0] as StepKey,
+                key: '',
                 value: {
                     guideName: 'fire-breathing-llama',
-                    stepNumber: 0,
+                    stepNumber: 1,
                     stepName: 'Untitled Step 1',
                     events: [],
                 } as Step,
@@ -52,9 +54,7 @@ const bg = BackgroundManager.new()
         },
         init: ({ db }) => {
             if (!db.objectStoreNames.contains('guides')) {
-                const guideStore = db.createObjectStore('guides', { 
-                    keyPath: ['guideName', 'stepNumber'] 
-                });
+                const guideStore = db.createObjectStore('guides');
                 guideStore.createIndex('guideName', 'guideName', { unique: false });
             }
         },
@@ -71,8 +71,13 @@ const bg = BackgroundManager.new()
                 }
                 */
             },
-            addStepToDB: (step: Step): Promise<StepKey> => {
-                return db.add('guides', step);
+            addStepToDB: (step: Step): Promise<string> => {
+                console.log('step', step);
+                console.log('step.guideName', step.guideName);
+                console.log('step.stepNumber', step.stepNumber);
+                const key = `${step.guideName}${step.stepNumber}`;
+                console.log('key', key);
+                return db.add('guides', step, key);
                 /*
                 const transaction = db.transaction('guides', 'readwrite');
                 const store = transaction.objectStore('guides');
@@ -92,6 +97,7 @@ const bg = BackgroundManager.new()
                     const guides: string[] = [];
                     while (cursor) {
                         const step = cursor.value;
+                        console.log('tx-step', step);
                         guides.push(step.guideName);
                         cursor = await cursor.advance(step.stepNumber);
                     }

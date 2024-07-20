@@ -8,30 +8,50 @@ function App() {
 
     const [guideNames, setGuideNames] = createSignal<string[]>([]);
 
-    const { 
-        stores: {
-            tab: { 
-                state: { recording },
-                actions: { startRecording, stopRecording }
+    const {
+        tab: {
+            getters: {
+                isRecording,
+                getStepTitles
+            },
+            actions: {
+                startRecording,
+                stopRecording,
+                addStepTitle,
+                resetStepTitles,
             },
         },
-        rpc: { getListOfGuides },
+        rpc: {
+            getListOfGuides,
+        },
     } = sidepanelMethods({ tabId, runtime: browser.runtime });
 
+    console.log(addStepTitle);
+
     const printSteps = async () => {
-        setGuideNames(await getListOfGuides());
-        console.log(guideNames);
+        const guides = await getListOfGuides();
+        setGuideNames(guides);
+        console.log(guideNames());
     };
+
+    const [step, setStep] = createSignal<string>('');
 
     return (
         <>
             <h1>CyberGuide</h1>
             <div>
-                <Show when={recording} fallback={
+                <Show when={isRecording()} fallback={
                     <button onClick={() => startRecording()}>Start Capture</button>
                 }>
                     <button onClick={() => stopRecording()}>Stop Capture</button>
                 </Show>
+            </div>
+            <br />
+            <div>
+                <h2>Steps</h2>
+                <For each={getStepTitles()}>
+                    {(stepTitle) => <h3>{stepTitle}</h3>}
+                </For>
             </div>
             <br />
             <div>
@@ -42,6 +62,9 @@ function App() {
             <For each={guideNames()}> 
                 {(guideName) => <h2>{guideName}</h2>}
             </For>
+            <input type="text" onInput={(e) => setStep(e.currentTarget.value)}/>
+            <button onClick={() => addStepTitle(step())}>Add Step</button>
+            <button onClick={resetStepTitles}>Reset Steps</button>
         </>
     );
 }

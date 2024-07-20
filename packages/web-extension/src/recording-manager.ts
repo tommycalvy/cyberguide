@@ -11,28 +11,29 @@ type EmitEventMessage = {
 
 export function recordingManager(runtime: Runtime.Static, recordScriptUrl: string) {
     let newEvents: eventWithTime[] = [];
-    const [clickDetected, setClickDetected] = createSignal(-1);
-    const [touchStartDetected, setTouchStartDetected] = createSignal(-1);
+    // const [clickDetected, setClickDetected] = createSignal(-1);
+    // const [touchStartDetected, setTouchStartDetected] = createSignal(-1);
 
     const {
-        stores: { 
-            tab: { 
-                state: { 
-                    recording,
-                    guideName,
-                    stepNumber,
-                    stepTitles,
-                },
-                actions: {
-                    incrementStepNumber,
-                    setGuideName,
-                },
+        tab: {
+            getters: { 
+                isRecording,
+                getGuideName,
+                getStepNumber,
+            },
+            actions: {
+                incrementStepNumber,
+                addStepTitle,
+                resetStepNumber,
+                resetStepTitles,
             },
         },
-        rpc: { addStepToDB },
+        rpc: {
+            addStepToDB,
+        },
     } = guidecreatorMethods({ runtime });
 
-    const startRecording = () => {
+    const injectRrwebScript = () => {
         const scriptEl = document.createElement('script');
         scriptEl.src = runtime.getURL(recordScriptUrl);
         console.log('scriptEl.src', scriptEl.src);
@@ -41,7 +42,6 @@ export function recordingManager(runtime: Runtime.Static, recordScriptUrl: strin
             document.documentElement.removeChild(scriptEl);
         };
     }
-
 
     const messageHandler = () => {
         return (event: MessageEvent<{ message: string }>) => {
@@ -66,12 +66,17 @@ export function recordingManager(runtime: Runtime.Static, recordScriptUrl: strin
                     newEvents.push((event.data as EmitEventMessage).event);
                     const stepDesc = detectStep(event.data.event);
                     if (stepDesc) {
-                        saveStepToDB({
-                            guideName,
+                        console.log('Step number', getStepNumber());
+                        addStepToDB({
+                            guideName: getGuideName(),
                             stepName: stepDesc,
-                            stepNumber, 
+                            stepNumber: getStepNumber(), 
                             events: newEvents,
                         });
+                        console.log('Step added to DB', stepDesc);
+                        addStepTitle(stepDesc);
+                        incrementStepNumber();
+                        newEvents = [];
                     }
                 },
             };
@@ -81,17 +86,18 @@ export function recordingManager(runtime: Runtime.Static, recordScriptUrl: strin
 
     window.addEventListener('message', messageHandler());
     createEffect(() => {
-        if (recording) {
-            startRecording();
-            newEvents = [];
+        if (isRecording()) {
+            injectRrwebScript();
             console.log('Start recording message received');
         } else {
             window.postMessage({ message: MessageName.StopRecord });
+            resetStepNumber();
+            resetStepTitles();
+            newEvents = [];
             console.log('Stop recording message received');
         }
     });
 }
-
 
 function detectStep(event: eventWithTime) {
     if (event.type === EventType.IncrementalSnapshot) {
