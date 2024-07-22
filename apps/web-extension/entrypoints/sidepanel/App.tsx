@@ -30,6 +30,7 @@ function App() {
 
     const printSteps = async () => {
         const guides = await getListOfGuides();
+        console.log(guides);
         setGuideNames(guides);
         console.log(guideNames());
     };

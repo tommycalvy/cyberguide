@@ -2,7 +2,7 @@ import { createFluxStore, type FluxStore } from "@solid-primitives/flux-store";
 import type { SetStoreFunction } from "solid-js/store";
 import type { Runtime } from 'webextension-polyfill';
 import { BackgroundBuilder } from './bg-builder';
-import type { StoreConfig, RPC, BGOptions, AnyAsyncRecord, AnyAsyncFunction } from './bg-builder';
+import type { StoreConfig, RPC, BGOptions, AnyAsyncRecord } from './bg-builder';
 import { BaseError, Result, errorResult } from './error';
 import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 
@@ -150,10 +150,11 @@ export class BackgroundManager<
 
             const createMethods = (db: IDBPDatabase<TDB>) => {
                 for (const method in this.rpc.methods({ db })) {
-                    console.log('method', method);
-                    (methods[method] as any) = (...args: any[]) => {
+                    (methods[method] as any) = async (...args: any[]) => {
                         const message: DBMessage = { type: 'database', method, args };
-                        return runtime.sendMessage(message);
+                        const response = await runtime.sendMessage(message);
+                        console.log('RPC response:', response);
+                        return response;
                     }
                 }
             }
@@ -181,15 +182,15 @@ export class BackgroundManager<
 
             const db = await this.registerDatabase();
 
-            runtime.onMessage.addListener(
-                typedEventListener<DBMessage, any>(async ( message, _sender, sendResponse) => {
-                if (this.rpc && message.type === 'database') {
-                    const { method, args } = message;
-                    const rpcMethod = this.rpc.methods({ db })[method] as AnyAsyncFunction;
-                    const response = await rpcMethod(...args);
-                    sendResponse(response);
-                }
-            }));
+            runtime.onMessage.addListener(async (message) => {
+                    if (this.rpc && message.type === 'database') {
+                        const { method, args } = message as DBMessage;
+                        const rpcMethod = this.rpc.methods({ db })[method];
+                        const response = await rpcMethod(...args);
+                        return response;
+                    }
+                    return null;
+            });
 
             runtime.onConnect.addListener((runtimePort) => { 
 
@@ -322,15 +323,3 @@ export class BackgroundManager<
     }
 
 }
-
-function typedEventListener<TMessage, TResponse>(listener: (
-                message: TMessage,
-                sender: Runtime.MessageSender,
-                sendResponse: (message: TResponse) => void,
-            ) => Promise<TResponse> | true | void) {
-    return listener as (
-                message: unknown,
-                sender: Runtime.MessageSender,
-                sendResponse: (message: unknown) => void,
-            ) => Promise<unknown> | true | void;
-};

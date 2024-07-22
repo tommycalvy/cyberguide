@@ -14,7 +14,20 @@ const bg = BackgroundManager.new()
         logging: true,
         dbVersion: 1,
     })
-    .setTabStore({
+    .setGlobalStore({
+        state: {
+            guideNames: [] as string[],
+        },
+        getters: (state) => ({
+            getGuideNames: () => state.guideNames,
+        }),
+        actions: (setState, state) => ({
+            addGuideName: (guideName: string) => {
+                setState('guideNames', [...state.guideNames, guideName]);
+            },
+            resetGuideNames: () => setState('guideNames', []),
+        })
+    }).setTabStore({
         state: { 
             recording: false,
             guideName: 'fire-breathing-llama',
@@ -35,7 +48,6 @@ const bg = BackgroundManager.new()
             resetStepNumber: () => setState('stepNumber', 1),
             addStepTitle: (stepTitle: string) => {
                 setState('stepTitles', [...state.stepTitles, stepTitle])
-                console.log('step added', stepTitle);
             },
             resetStepTitles: () => setState('stepTitles', []),
         })
@@ -61,33 +73,10 @@ const bg = BackgroundManager.new()
         methods: ({ db }) => ({
             getGuideFromDB: (guideName: string): Promise<Step[]> => {
                 return db.getAllFromIndex('guides', 'guideName', guideName);
-                /*
-                const transaction = db.transaction('guides', 'readonly');
-                const store = transaction.objectStore('guides');
-                const index = store.index('guideName');
-                const steps = index.getAll(guideName);
-                steps.onsuccess = () => {
-                    callback(steps.result);
-                }
-                */
             },
             addStepToDB: (step: Step): Promise<string> => {
-                console.log('step', step);
-                console.log('step.guideName', step.guideName);
-                console.log('step.stepNumber', step.stepNumber);
                 const key = `${step.guideName}${step.stepNumber}`;
-                console.log('key', key);
                 return db.add('guides', step, key);
-                /*
-                const transaction = db.transaction('guides', 'readwrite');
-                const store = transaction.objectStore('guides');
-                const result = store.add(step);
-                result.onerror = (event) => {
-                    console.error(event);
-                    const err = new BaseError('Error adding step');
-                    callback(err);
-                }
-                */
             },
             getListOfGuides: (): Promise<string[]> => {
                 return new Promise(async (resolve, _reject) => {
@@ -97,34 +86,11 @@ const bg = BackgroundManager.new()
                     const guides: string[] = [];
                     while (cursor) {
                         const step = cursor.value;
-                        console.log('tx-step', step);
                         guides.push(step.guideName);
                         cursor = await cursor.advance(step.stepNumber);
                     }
                     resolve(guides);
                 });
-                /*
-                const transaction = db.transaction('guides', 'readonly');
-                const store = transaction.objectStore('guides');
-                const index = store.index('guideName');
-                const cursorRequest = index.openCursor(null, 'prev');
-                const uniqueGuides: string[] = [];
-
-                cursorRequest.onsuccess = (event) => {
-                    const cursor = (event.target as IDBRequest<IDBCursor & { value: Step }>).result;
-                    if (cursor) {
-                        const step = cursor.value;
-                        uniqueGuides.push(step.guideName);
-                        cursor.advance(step.stepNumber);
-                    } else {
-                        // When cursor is null, we've traversed all records
-                        callback(uniqueGuides);
-                    }
-                };
-                cursorRequest.onerror = event => {
-                    console.error('Cursor request failed', event);
-                };
-                */
             },
         })
     }).build();
