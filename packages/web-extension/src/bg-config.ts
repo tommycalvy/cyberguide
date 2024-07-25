@@ -3,10 +3,19 @@ import type { eventWithTime } from 'rrweb';
 
 export interface Step {
     guideName: string;
-    stepNumber: number;
+    guideNumber: number;
     stepName: string;
+    stepNumber: number;
     events: eventWithTime[];
 };
+
+export interface Guide {
+    guideName: string;
+    guideNumber: number;
+    dateCreated: Date;
+};
+
+export const guideNumberMultiplier = 1000000;
 
 const bg = BackgroundManager.new()
     .setOptions({
@@ -16,16 +25,21 @@ const bg = BackgroundManager.new()
     })
     .setGlobalStore({
         state: {
-            guideNames: [] as string[],
+            guides: [] as Guide[],
         },
         getters: (state) => ({
-            getGuideNames: () => state.guideNames,
+            guideList: () => state.guides,
+            numberOfGuides: () => state.guides.length,
         }),
         actions: (setState, state) => ({
-            addGuideName: (guideName: string) => {
-                setState('guideNames', [...state.guideNames, guideName]);
+            addGuide: (guideName: string) => {
+                const guide: Guide = {
+                    guideName,
+                    guideNumber: state.guides.length,
+                    dateCreated: new Date(),
+                };
+                setState('guides', [...state.guides, guide]);
             },
-            resetGuideNames: () => setState('guideNames', []),
         })
     }).setTabStore({
         state: { 
@@ -57,8 +71,9 @@ const bg = BackgroundManager.new()
                 key: '',
                 value: {
                     guideName: 'fire-breathing-llama',
-                    stepNumber: 1,
+                    guideNumber: 0,
                     stepName: 'Untitled Step 1',
+                    stepNumber: 1,
                     events: [],
                 } as Step,
                 indexes: { guideName: 'guideName' },
@@ -66,7 +81,7 @@ const bg = BackgroundManager.new()
         },
         init: ({ db }) => {
             if (!db.objectStoreNames.contains('guides')) {
-                const guideStore = db.createObjectStore('guides');
+                const guideStore = db.createObjectStore('guides', { autoIncrement: true });
                 guideStore.createIndex('guideName', 'guideName', { unique: false });
             }
         },
@@ -75,8 +90,8 @@ const bg = BackgroundManager.new()
                 return db.getAllFromIndex('guides', 'guideName', guideName);
             },
             addStepToDB: (step: Step): Promise<string> => {
-                const key = `${step.guideName}${step.stepNumber}`;
-                return db.add('guides', step, key);
+                const key = step.guideNumber * guideNumberMultiplier + step.stepNumber;
+                return db.add('guides', step, String(key));
             },
             getListOfGuides: (): Promise<string[]> => {
                 return new Promise(async (resolve, _reject) => {
