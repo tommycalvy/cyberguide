@@ -1,5 +1,5 @@
 {
-    "$schema": "https://json.schemastore.org/jsconfig",
-    "extends": "./jsconfig.base.json",
-    "include": ["**/*", ".*.js"]
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "extends": "./tsconfig.base.json",
+    "include": ["**/*", ".*.ts"],
 }

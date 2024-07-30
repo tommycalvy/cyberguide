@@ -12,8 +12,7 @@
         "preserveSymlinks": true,
         "paths": {
             "@cyberguide/*": [
-                "packages/*/src/index.js",
-                "packages/*/src/types.d.ts"
+                "packages/*/src/index.ts",
             ]
         }
     }

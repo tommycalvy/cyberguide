@@ -1,5 +1,11 @@
 {
     "$schema": "https://json.schemastore.org/tsconfig",
     "extends": "../../tsconfig.base.json",
-    "include": ["src/**/*", "node_modules/@types/**/*"]
+    "include": ["src/**/*", "node_modules/@types/**/*", "global.d.ts"],
+    "compilerOptions": {
+        "jsx": "preserve",
+        "jsxImportSource": "solid-js",
+        "isolatedModules": true,
+        "resolveJsonModule": true,
+    },
 }

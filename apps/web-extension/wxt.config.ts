@@ -9,6 +9,11 @@ export default defineConfig({
             minify: false,
         },
         plugins: [Solid()],
+        css: {
+            modules: {
+                localsConvention: 'camelCaseOnly',
+            },
+        }
     }),
     manifest: {
         permissions: ['activeTab', 'scripting', 'sidePanel'],
